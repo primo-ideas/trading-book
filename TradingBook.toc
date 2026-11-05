@@ -1,0 +1,58 @@
+## Interface: 120105
+## Title: Trading Book
+## Notes: Keeps a record of your auctions and your stock, with statistics.
+## Notes-deDE: Behält deine Auktionen und deinen Bestand im Blick, mit Statistiken.
+## Notes-esES: Lleva el registro de tus subastas y tus existencias, con estadísticas.
+## Notes-esMX: Lleva el registro de tus subastas y tu inventario, con estadísticas.
+## Notes-frFR: Garde la trace de vos enchères et de votre stock, avec des statistiques.
+## Notes-itIT: Tiene traccia delle tue aste e delle tue scorte, con statistiche.
+## Notes-koKR: 경매와 재고를 기록하고 통계를 보여 줍니다.
+## Notes-ptBR: Mantém um registro dos seus leilões e do seu estoque, com estatísticas.
+## Notes-ruRU: Ведёт учёт ваших аукционов и запасов, со статистикой.
+## Notes-zhCN: 记录你的拍卖和库存，并提供统计数据。
+## Notes-zhTW: 記錄你的拍賣與庫存，並提供統計資料。
+## Author: Primo
+## Version: @project-version@
+## SavedVariables: TradingBookDB
+## OptionalDeps: Auctionator
+## IconTexture: Interface\Icons\INV_Misc_Coin_01
+## AddonCompartmentFunc: TradingBook_OnAddonCompartmentClick
+## Category-enUS: Auctions
+## Category-deDE: Auktionen
+## Category-esES: Subastas
+## Category-esMX: Subastas
+## Category-frFR: Ventes
+## Category-itIT: Aste
+## Category-koKR: 경매
+## Category-ptBR: Leilões
+## Category-ruRU: Аукционы
+## Category-zhCN: 拍卖
+## Category-zhTW: 拍賣
+
+Locales\deDE.lua
+Locales\enGB.lua
+Locales\esES.lua
+Locales\esMX.lua
+Locales\frFR.lua
+Locales\itIT.lua
+Locales\koKR.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Locales.lua
+Core.lua
+Ledger.lua
+Auctions.lua
+Mail.lua
+Stockpile.lua
+Stats.lua
+Gold.lua
+UI\Widgets.lua
+UI\Charts.lua
+UI\MainFrame.lua
+UI\MinimapButton.lua
+UI\AuctionsTab.lua
+UI\StockTab.lua
+UI\StatsTab.lua
+UI\GoldTab.lua
