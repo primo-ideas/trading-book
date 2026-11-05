@@ -1,19 +1,19 @@
 ﻿<#
 .SYNOPSIS
-    Installe l'addon Trading Book dans World of Warcraft (Retail).
+    Installs the Trading Book addon into World of Warcraft (Retail).
 
 .DESCRIPTION
-    Copie dans Interface\AddOns le fichier .toc et les fichiers qu'il liste, rien
-    d'autre. Le dossier installé est remplacé à chaque fois : après une modification
-    du code, relancez le script, puis faites /reload en jeu.
+    Copies the .toc and the files it lists into Interface\AddOns, and nothing else. The
+    installed folder is replaced every time: after changing the code, run the script
+    again, then /reload in game.
 
 .PARAMETER Clean
-    Supprime aussi les données sauvegardées de Trading Book (historique, stock, or) sur
-    tous les comptes. Irréversible : une confirmation est demandée, et WoW doit être
-    fermé. Ajoutez -Confirm:$false pour ne pas être interrogé.
+    Also deletes Trading Book's saved data (history, stock, gold) on all accounts. This
+    cannot be undone: you are asked to confirm, and WoW must be closed. Add
+    -Confirm:$false to skip the question.
 
 .PARAMETER WowPath
-    Dossier d'installation de World of Warcraft, celui qui contient _retail_.
+    The World of Warcraft installation folder, the one containing _retail_.
 
 .EXAMPLE
     .\install.ps1
@@ -23,7 +23,7 @@
 
 .EXAMPLE
     .\install.ps1 -Clean -WhatIf
-    Montre ce qui serait fait, sans rien modifier.
+    Shows what would be done, without changing anything.
 #>
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
@@ -45,16 +45,16 @@ $installPath = Join-Path $addOnsPath $addonName
 $stagingPath = "$installPath.install-tmp"
 
 if (-not (Test-Path -LiteralPath $tocPath -PathType Leaf)) {
-    throw "$tocName est introuvable à côté de ce script ($PSScriptRoot)."
+    throw "$tocName was not found next to this script ($PSScriptRoot)."
 }
 if (-not (Test-Path -LiteralPath $addOnsPath -PathType Container)) {
-    throw "World of Warcraft (Retail) est introuvable dans « $WowPath ». Indiquez son dossier avec -WowPath."
+    throw "World of Warcraft (Retail) was not found in '$WowPath'. Give its folder with -WowPath."
 }
 
 # Checked before changing anything: the client rewrites saved variables when it
 # logs out or reloads, so the deleted data would simply come back.
 if ($Clean -and (Get-Process -Name 'Wow' -ErrorAction SilentlyContinue)) {
-    throw 'WoW est ouvert : fermez-le avant -Clean, sinon il réécrira ses données en quittant. Rien n''a été modifié.'
+    throw 'WoW is open: close it before using -Clean, or it will write its data back when it exits. Nothing was changed.'
 }
 
 # Installation ---------------------------------------------------------------
@@ -65,7 +65,7 @@ $files = @($tocName) + @($tocLines | ForEach-Object { $_.Trim() } | Where-Object
 
 $missing = @($files | Where-Object { -not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $_) -PathType Leaf) })
 if ($missing.Count -gt 0) {
-    throw "Fichiers listés dans $tocName mais introuvables : $($missing -join ', '). Rien n'a été modifié."
+    throw "Files listed in $tocName but not found: $($missing -join ', '). Nothing was changed."
 }
 
 # Whether a folder may be replaced: a copy made by this script has our author in its .toc
@@ -86,7 +86,7 @@ function Test-InstalledCopy($Item) {
 # Get-Item rather than Test-Path, which does not see a link whose target has moved.
 $existing = Get-Item -LiteralPath $installPath -Force -ErrorAction SilentlyContinue
 if ($existing -and -not (Test-InstalledCopy $existing)) {
-    throw "« $installPath » existe déjà et n'a pas été installé par ce script. Déplacez-le ou supprimez-le, puis relancez le script. Rien n'a été modifié."
+    throw "'$installPath' already exists and was not installed by this script. Move or delete it, then run the script again. Nothing was changed."
 }
 
 # A lower impact than the script's: updating the install is routine and loses nothing,
@@ -95,7 +95,7 @@ function Install-AddonFiles {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
     param()
 
-    if (-not $PSCmdlet.ShouldProcess($installPath, "Installer $($files.Count) fichiers")) {
+    if (-not $PSCmdlet.ShouldProcess($installPath, "Install $($files.Count) files")) {
         return
     }
 
@@ -113,12 +113,12 @@ function Install-AddonFiles {
     }
     Rename-Item -LiteralPath $stagingPath -NewName $addonName -Confirm:$false
 
-    Write-Host "$addonName installé : $installPath ($($files.Count) fichiers)"
+    Write-Host "$addonName installed: $installPath ($($files.Count) files)"
     if ($existing) {
-        Write-Host 'Si WoW est ouvert, faites /reload. Redémarrez-le si la liste de fichiers du .toc a changé.'
+        Write-Host 'If WoW is open, type /reload. Restart it if the list of files in the .toc changed.'
     }
     else {
-        Write-Host 'Si WoW est ouvert, redémarrez-le : un nouvel addon n''est détecté qu''au lancement.'
+        Write-Host 'If WoW is open, restart it: a new addon is only detected at launch.'
     }
 }
 
@@ -141,15 +141,15 @@ if ($Clean) {
     )
 
     if ($files.Count -eq 0) {
-        Write-Host 'Aucune donnée sauvegardée à supprimer.'
+        Write-Host 'No saved data to delete.'
     }
-    elseif ($PSCmdlet.ShouldProcess(($files -join [Environment]::NewLine), 'Supprimer définitivement')) {
+    elseif ($PSCmdlet.ShouldProcess(($files -join [Environment]::NewLine), 'Delete permanently')) {
         Remove-Item -LiteralPath $files -Force -Confirm:$false
         foreach ($file in $files) {
-            Write-Host "Supprimé : $file"
+            Write-Host "Deleted: $file"
         }
     }
     elseif (-not $WhatIfPreference) {
-        Write-Host 'Données sauvegardées conservées.'
+        Write-Host 'Saved data kept.'
     }
 }
