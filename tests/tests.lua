@@ -1575,7 +1575,7 @@ end)
 -- The heaviest account the game allows, in each language: 12-letter names, and every
 -- character at the gold cap.
 local GOLD_CAP = 99999990000
-local LONGEST_NAME = "Personnagelo"
+local LONGEST_NAME = "Twelveletter"
 
 local layoutLocale = "enUS"
 
@@ -1593,7 +1593,7 @@ local function layoutFixture()
     Mock.UseRealisticMoney()
     for i = 1, 40 do
         local itemID = 5000 + i
-        local name = "Objet au nom vraiment très long, numéro " .. i
+        local name = "An item with a really very long name, number " .. i
         ns.RememberItem(itemID, name, 3, 1000 + itemID)
         Mock.SetBagItem(0, i, itemID, name, 1234 + i)
         Mock.SetBagItem(6, i, itemID, name, 5432)
