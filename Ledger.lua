@@ -4,7 +4,7 @@ local _, ns = ...
 --   kind     "post" | "sold" | "bought" | "expired" | "cancel"
 --   t, char  when it happened, and on which character
 --   itemID, name, link, qty
---   gross    sold: sale price (total); bought: price paid (total)
+--   gross    sold: sale price (total); bought: price paid (total), nil when unknown
 --   cut      sold: auction house commission
 --   deposit  post: deposit paid; sold: deposit refunded
 --   unit     post: listed unit price
@@ -39,9 +39,23 @@ end
 -- sale, before any fee. Nil when unknown.
 function Ledger.UnitPrice(entry)
     if entry.kind == "sold" or entry.kind == "bought" then
-        return (entry.gross or 0) / (entry.qty or 1)
+        return entry.gross and entry.gross / (entry.qty or 1)
     end
     return entry.unit
+end
+
+-- A purchase whose mail invoice could not be read: what it cost is not known, and
+-- it counts as nothing in the totals.
+function Ledger.IsPriceUnknown(entry)
+    return entry.kind == "bought" and entry.gross == nil
+end
+
+-- What an entry did to the account's money, or nil when unknown.
+function Ledger.Amount(entry)
+    if Ledger.IsPriceUnknown(entry) then
+        return nil
+    end
+    return ns.Stats.Net(entry)
 end
 
 -- CSV ------------------------------------------------------------------------------
@@ -72,6 +86,7 @@ function Ledger.ToCSV()
     local lines = { table.concat(CSV_COLUMNS, ",") }
     for _, entry in ipairs(entries) do
         local unit = Ledger.UnitPrice(entry)
+        local amount = Ledger.Amount(entry)
         local values = {
             date("%Y-%m-%d %H:%M", entry.t),
             entry.kind,
@@ -79,7 +94,7 @@ function Ledger.ToCSV()
             entry.itemID,
             entry.qty or 1,
             unit and math.floor(unit + 0.5),
-            math.floor(ns.Stats.Net(entry) + 0.5),
+            amount and math.floor(amount + 0.5),
             entry.char,
             entry.other,
         }

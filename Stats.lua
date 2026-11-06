@@ -33,18 +33,22 @@ local function ItemBucket(items, entry)
     end
     local bucket = items[key]
     if not bucket then
-        bucket = { itemID = entry.itemID, name = entry.name, soldQty = 0, gross = 0, boughtQty = 0, spent = 0, net = 0 }
+        bucket = {
+            itemID = entry.itemID, name = entry.name, soldQty = 0, gross = 0,
+            boughtQty = 0, pricedBoughtQty = 0, spent = 0, net = 0,
+        }
         items[key] = bucket
     end
     return bucket
 end
 
--- options: since (timestamp), char (character key)
+-- options: since (timestamp), char (character key). unpricedPurchases counts the
+-- purchases left out of the totals, as what they cost is not known.
 function Stats.Summarize(options)
     options = options or {}
     local summary = {
         gross = 0, cut = 0, depositsPaid = 0, depositsRefunded = 0, cancelCosts = 0,
-        spent = 0, net = 0, soldQty = 0, expiredQty = 0, cancelledQty = 0, items = {},
+        spent = 0, net = 0, soldQty = 0, expiredQty = 0, cancelledQty = 0, unpricedPurchases = 0, items = {},
     }
     for _, entry in ipairs(ns.db.ledger) do
         if Matches(entry, options) then
@@ -65,10 +69,18 @@ function Stats.Summarize(options)
                     bucket.gross = bucket.gross + (entry.gross or 0)
                 end
             elseif entry.kind == "bought" then
+                local unpriced = ns.Ledger.IsPriceUnknown(entry)
                 summary.spent = summary.spent + (entry.gross or 0)
+                if unpriced then
+                    summary.unpricedPurchases = summary.unpricedPurchases + 1
+                end
                 if bucket then
                     bucket.boughtQty = bucket.boughtQty + quantity
                     bucket.spent = bucket.spent + (entry.gross or 0)
+                    -- The average purchase price only spreads what is known.
+                    if not unpriced then
+                        bucket.pricedBoughtQty = bucket.pricedBoughtQty + quantity
+                    end
                 end
             elseif entry.kind == "post" then
                 summary.depositsPaid = summary.depositsPaid + (entry.deposit or 0)

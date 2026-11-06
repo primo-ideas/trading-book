@@ -56,13 +56,28 @@ end
 
 -- Saved data ----------------------------------------------------------------
 
+local SCHEMA = 2
+
+-- Schema 1 recorded a purchase whose invoice could not be read at zero, a price the
+-- auction house never charges: it becomes unknown.
+local function MigrateUnpricedPurchases(ledger)
+    for _, entry in ipairs(ledger) do
+        if entry.kind == "bought" and entry.gross == 0 then
+            entry.gross = nil
+        end
+    end
+end
+
 local function InitDB()
     TradingBookDB = TradingBookDB or {}
     local db = TradingBookDB
-    db.schema = db.schema or 1
     db.characters = db.characters or {}
     db.warband = db.warband or { items = {}, money = 0 }
     db.ledger = db.ledger or {}
+    if db.schema and db.schema < 2 then
+        MigrateUnpricedPurchases(db.ledger)
+    end
+    db.schema = SCHEMA
     db.items = db.items or {}
     db.itemIDsByName = db.itemIDsByName or {}
     db.stockHistory = db.stockHistory or {}
