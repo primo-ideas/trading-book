@@ -32,6 +32,17 @@ function UI.GetCharacterFilter()
     return selectedCharacter
 end
 
+-- Whether a frame is part of the window, such as one of its table rows.
+function UI.IsOwnFrame(object)
+    while object do
+        if object == frame then
+            return true
+        end
+        object = object:GetParent()
+    end
+    return false
+end
+
 local function RefreshSelected()
     if frame and frame:IsShown() then
         tabs[selectedTab].Refresh()

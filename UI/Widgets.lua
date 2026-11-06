@@ -69,8 +69,42 @@ function UI.ShowItemTooltip(owner, itemID, link, name)
     end
 end
 
+-- A label and its value, in the colours every tooltip of the addon uses.
+function UI.AddValueLine(tooltip, label, value)
+    tooltip:AddDoubleLine(label, value, 0.8, 0.8, 0.8, 1, 1, 1)
+end
+
 function UI.AddMoneyLine(label, copper)
-    GameTooltip:AddDoubleLine(label, ns.FormatExactMoney(copper), 0.8, 0.8, 0.8, 1, 1, 1)
+    UI.AddValueLine(GameTooltip, label, ns.FormatExactMoney(copper))
+end
+
+local HOLDING_PLACES = {
+    { key = "bags", label = L["Bags"] },
+    { key = "bank", label = L["Bank"] },
+    { key = "mail", label = L["Mail"] },
+    { key = "auctions", label = L["AH"] },
+}
+
+-- Where a stock row's units are: one line per character, by name, then the warband bank.
+function UI.AddHoldingLines(tooltip, row)
+    local keys = {}
+    for key in pairs(row.characters) do
+        keys[#keys + 1] = key
+    end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        local parts = {}
+        for _, place in ipairs(HOLDING_PLACES) do
+            local quantity = row.characters[key][place.key]
+            if quantity then
+                parts[#parts + 1] = place.label .. " " .. BreakUpLargeNumbers(quantity)
+            end
+        end
+        UI.AddValueLine(tooltip, ns.ColoredCharacterName(key), table.concat(parts, ", "))
+    end
+    if row.warband > 0 then
+        UI.AddValueLine(tooltip, L["Warband bank"], BreakUpLargeNumbers(row.warband))
+    end
 end
 
 function UI.AddHint(frame, title, text)

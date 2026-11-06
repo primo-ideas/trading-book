@@ -28,6 +28,8 @@ The installed folder is replaced every time, so keep nothing in it. Saved data l
 
 Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it back.
 
+Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get a Trading Book section: the account's stock of that item by character and place, your average sale price over 90 days, and your last sale. Nothing is added for an item you neither hold nor ever sold, nor in Trading Book's own window, which already shows the same. `/tradingbook tooltip` hides the section or brings it back.
+
 | Tab | Content |
 | --- | --- |
 | **Auctions** | History of sales, purchases, listings, expiries and cancellations, plus your active auctions. |
@@ -80,7 +82,8 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 5. **Cancellation**: the cost is filled in.
 6. **Warband bank**: its content and gold appear when the bank opens.
 7. **Full mailbox**: a collection that fails on full bags, then succeeds, only counts once.
-8. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
+8. **Item tooltips**: the section appears on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's window nor on the comparison tooltips, and hovering an item in combat raises no error.
+9. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
 
@@ -124,6 +127,6 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Gold.lua` | Gold history per holder and its analysis |
 | `Stats.lua` | Statistics and price estimates |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
-| `UI/` | Window, tables and tabs |
+| `UI/` | Window, tables, tabs and item tooltips |
 | `tests/` | Fake client and tests |
 | `install.ps1`, `.pkgmeta` | Local install and CurseForge package |

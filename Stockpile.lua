@@ -101,9 +101,11 @@ end
 
 -- Reading -------------------------------------------------------------------
 
--- Without a character filter, totals span the whole account including the warband bank.
-function Stockpile.GetRows(characterKey)
+-- Rows by item ID, for every item or only one. Without a character filter, totals
+-- span the whole account including the warband bank.
+local function CollectRows(characterKey, onlyItemID)
     local db = ns.db
+    local now = time()
     local rowsByItem = {}
 
     local function Add(itemID, place, quantity, key)
@@ -127,31 +129,47 @@ function Stockpile.GetRows(characterKey)
         end
     end
 
+    -- Looking a single item up directly keeps tooltips cheap, as they redraw often.
+    local function AddCounts(counts, place, key)
+        if onlyItemID then
+            Add(onlyItemID, place, counts[onlyItemID] or 0, key)
+            return
+        end
+        for itemID, quantity in pairs(counts) do
+            Add(itemID, place, quantity, key)
+        end
+    end
+
     for key, character in pairs(db.characters) do
         if not characterKey or key == characterKey then
             for _, place in ipairs({ "bags", "bank", "mail" }) do
-                for itemID, quantity in pairs(character.stock[place]) do
-                    Add(itemID, place, quantity, key)
+                AddCounts(character.stock[place], place, key)
+            end
+            for _, auction in ipairs(character.auctions) do
+                if not auction.sold and ns.Auctions.IsLive(auction, now)
+                    and (not onlyItemID or auction.itemID == onlyItemID) then
+                    Add(auction.itemID, "auctions", auction.qty, key)
                 end
             end
         end
     end
-    for _, row in ipairs(ns.Auctions.GetAll(characterKey)) do
-        if not row.auction.sold then
-            Add(row.auction.itemID, "auctions", row.auction.qty, row.char)
-        end
-    end
     if not characterKey then
-        for itemID, quantity in pairs(db.warband.items) do
-            Add(itemID, "warband", quantity)
-        end
+        AddCounts(db.warband.items, "warband")
     end
+    return rowsByItem
+end
 
+function Stockpile.GetRows(characterKey)
     local rows = {}
-    for _, row in pairs(rowsByItem) do
+    for _, row in pairs(CollectRows(characterKey)) do
         rows[#rows + 1] = row
     end
     return rows
+end
+
+-- The same row as GetRows for one item across the whole account, or nil when none is held.
+function Stockpile.GetItemRow(itemID)
+    return CollectRows(nil, itemID)[itemID]
 end
 
 -- Money held on characters, plus the warband bank for the whole account.

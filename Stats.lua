@@ -156,32 +156,50 @@ end
 
 -- Pricing -------------------------------------------------------------------
 
-local salePrices = nil
+local saleStats = nil
 
 ns.Subscribe("LEDGER_CHANGED", function()
-    salePrices = nil
+    saleStats = nil
 end)
 
-local function AverageSalePrice(itemID)
-    if not salePrices then
-        local cutoff = time() - SALE_PRICE_WINDOW_DAYS * SECONDS_PER_DAY
-        local totals = {}
-        for _, entry in ipairs(ns.db.ledger) do
-            if entry.kind == "sold" and entry.itemID and entry.t >= cutoff then
-                local total = totals[entry.itemID] or { gross = 0, qty = 0 }
+-- Per item: the average unit price over the recent window, and the latest sale ever.
+-- Sales are dated from their mail, so the ledger is not in date order.
+local function BuildSaleStats()
+    local cutoff = time() - SALE_PRICE_WINDOW_DAYS * SECONDS_PER_DAY
+    local totals = {}
+    for _, entry in ipairs(ns.db.ledger) do
+        if entry.kind == "sold" and entry.itemID then
+            local total = totals[entry.itemID] or { gross = 0, qty = 0 }
+            totals[entry.itemID] = total
+            if entry.t >= cutoff then
                 total.gross = total.gross + (entry.gross or 0)
                 total.qty = total.qty + (entry.qty or 1)
-                totals[entry.itemID] = total
             end
-        end
-        salePrices = {}
-        for id, total in pairs(totals) do
-            if total.qty > 0 then
-                salePrices[id] = total.gross / total.qty
+            if not total.last or entry.t >= total.last.t then
+                total.last = entry
             end
         end
     end
-    return salePrices[itemID]
+    local stats = {}
+    for id, total in pairs(totals) do
+        stats[id] = {
+            average = total.qty > 0 and total.gross / total.qty or nil,
+            last = total.last,
+        }
+    end
+    return stats
+end
+
+-- { average, last } for an item, or nil when it was never sold. average is nil
+-- when no sale falls within the window, and last is a ledger entry.
+function Stats.GetSaleStats(itemID)
+    saleStats = saleStats or BuildSaleStats()
+    return saleStats[itemID]
+end
+
+local function AverageSalePrice(itemID)
+    local stats = Stats.GetSaleStats(itemID)
+    return stats and stats.average
 end
 
 -- Current unit value of an item, and where it comes from ("auctionator" or "sales").

@@ -245,8 +245,10 @@ SlashCmdList.TRADINGBOOK = function(message)
         ns.UI.Open(command)
     elseif command == "minimap" then
         ns.UI.ToggleMinimapButton()
+    elseif command == "tooltip" then
+        ns.UI.ToggleItemTooltip()
     else
-        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | minimap]"])
+        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"])
     end
 end
 
