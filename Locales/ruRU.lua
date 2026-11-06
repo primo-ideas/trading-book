@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d дн.",
     ["%d h"] = "%d ч",
     ["%d min"] = "%d мин",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "ЛКМ: открыть или закрыть",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "истекло: %s",
     ["Mail summary"] = "Сводка почты",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Когда вы отходите от почтового ящика, кратко сообщает в чате о полученных продажах, покупках и истекших аукционах.",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "Нет отслеживаемых предметов. /tradingbook watch, затем предмет и цена, добавляет предмет.",
+    ["Watched items:"] = "Отслеживаемые предметы:",
+    ["buy at %s or less"] = "купить за %s или дешевле",
+    ["sell at %s or more"] = "продать за %s или дороже",
+    ["now %s"] = "сейчас %s",
+    ["no price yet"] = "цены пока нет",
+    ["Watching %s: %s."] = "Отслеживается %s: %s.",
+    ["%s is no longer watched."] = "%s больше не отслеживается.",
+    ["%s is not watched."] = "%s не отслеживается.",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "Неизвестный предмет. Вставьте его в команду через Shift+клик или введите точное название.",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "Неизвестная цена. Укажите её как 12g50s, 50s или 12.5.",
+    ["Watched %s is at %s: %s."] = "Отслеживаемый %s стоит %s: %s.",
+    ["Buy target"] = "Цель покупки",
+    ["Sell target"] = "Цель продажи",
+    ["History as CSV"] = "История в CSV",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "Текст выделен: скопируйте его и вставьте в электронную таблицу.",
 }

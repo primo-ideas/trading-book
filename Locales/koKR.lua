@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d일",
     ["%d h"] = "%d시간",
     ["%d min"] = "%d분",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "왼쪽 클릭: 열기 또는 닫기",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "만료 %s건",
     ["Mail summary"] = "우편 요약",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "우편함을 떠날 때 받은 판매, 구매, 만료 내역을 대화창에 요약합니다.",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "관심 아이템이 없습니다. /tradingbook watch 뒤에 아이템과 가격을 입력하면 추가됩니다.",
+    ["Watched items:"] = "관심 아이템:",
+    ["buy at %s or less"] = "%s 이하로 구매",
+    ["sell at %s or more"] = "%s 이상으로 판매",
+    ["now %s"] = "현재 %s",
+    ["no price yet"] = "아직 가격 없음",
+    ["Watching %s: %s."] = "%s 관심 등록: %s.",
+    ["%s is no longer watched."] = "%s 관심 해제.",
+    ["%s is not watched."] = "관심 아이템이 아닙니다: %s.",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "알 수 없는 아이템입니다. Shift+클릭으로 명령어에 넣거나 정확한 이름을 입력하세요.",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "알 수 없는 가격입니다. 12g50s, 50s, 12.5처럼 입력하세요.",
+    ["Watched %s is at %s: %s."] = "관심 아이템 %s 현재가 %s: %s.",
+    ["Buy target"] = "구매 목표가",
+    ["Sell target"] = "판매 목표가",
+    ["History as CSV"] = "CSV 형식의 기록",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "텍스트가 선택되어 있습니다. 복사한 뒤 스프레드시트에 붙여 넣으세요.",
 }

@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d d",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clique esquerdo: abrir ou fechar",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "%s expirados",
     ["Mail summary"] = "Resumo do correio",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Ao sair da caixa de correio, resume no chat as vendas, compras e expirações recolhidas.",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "Nenhum item observado. /tradingbook watch seguido de um item e um preço adiciona um.",
+    ["Watched items:"] = "Itens observados:",
+    ["buy at %s or less"] = "comprar por %s ou menos",
+    ["sell at %s or more"] = "vender por %s ou mais",
+    ["now %s"] = "agora %s",
+    ["no price yet"] = "ainda sem preço",
+    ["Watching %s: %s."] = "Observando %s: %s.",
+    ["%s is no longer watched."] = "%s não é mais observado.",
+    ["%s is not watched."] = "%s não é observado.",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "Item desconhecido. Insira-o no comando com Shift+clique ou digite o nome exato.",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "Preço desconhecido. Escreva como 12g50s, 50s ou 12.5.",
+    ["Watched %s is at %s: %s."] = "%s observado está a %s: %s.",
+    ["Buy target"] = "Preço-alvo de compra",
+    ["Sell target"] = "Preço-alvo de venda",
+    ["History as CSV"] = "Histórico em CSV",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "O texto está selecionado: copie-o e cole-o numa planilha.",
 }

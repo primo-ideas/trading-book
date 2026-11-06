@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d天",
     ["%d h"] = "%d小时",
     ["%d min"] = "%d分钟",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "左键：打开或关闭",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "过期 %s 笔",
     ["Mail summary"] = "邮件摘要",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "离开邮箱时，在聊天框中汇总领取的售出、购买和过期。",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "没有关注的物品。输入 /tradingbook watch 加物品和价格即可添加。",
+    ["Watched items:"] = "关注的物品：",
+    ["buy at %s or less"] = "%s 或更低时购买",
+    ["sell at %s or more"] = "%s 或更高时出售",
+    ["now %s"] = "当前 %s",
+    ["no price yet"] = "暂无价格",
+    ["Watching %s: %s."] = "已关注 %s：%s。",
+    ["%s is no longer watched."] = "已取消关注 %s。",
+    ["%s is not watched."] = "%s 未被关注。",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "未知物品。请用 Shift+点击将其插入命令，或输入其准确名称。",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "未知价格。请写成 12g50s、50s 或 12.5 这样的格式。",
+    ["Watched %s is at %s: %s."] = "关注的 %s 当前价格 %s：%s。",
+    ["Buy target"] = "目标买价",
+    ["Sell target"] = "目标卖价",
+    ["History as CSV"] = "CSV 格式的历史记录",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "文本已选中：复制后粘贴到电子表格中。",
 }

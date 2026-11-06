@@ -2534,6 +2534,173 @@ test("the mail summary can be turned off in the settings", function()
     eq(#TradingBookDB.ledger, 1, "the sale is still recorded")
 end)
 
+-- Watch list ----------------------------------------------------------------------
+
+local HERB_LINK = "|cffffffff|Hitem:1001::::|h[Herb]|h|r"
+
+local function lastPrinted(world)
+    return world.printed[#world.printed] or ""
+end
+
+test("prices are read as players write them", function()
+    local ns = Mock.Boot()
+    local cases = {
+        ["12g50s25c"] = 125025, ["50s"] = 5000, ["75c"] = 75, ["12G"] = 120000, ["1g5c"] = 10005,
+        ["12"] = 120000, ["12.5"] = 125000, [".5"] = 5000,
+    }
+    for text, copper in pairs(cases) do
+        eq(ns.Watch.ParseMoney(text), copper, text)
+    end
+    for _, text in ipairs({ "", "abc", "12x", "g", "12g50", "1.2.3" }) do
+        eq(ns.Watch.ParseMoney(text), nil, "refused: " .. text)
+    end
+end)
+
+test("an item is watched by link or by name, with a target to buy, to sell, or both", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    SlashCmdList.TRADINGBOOK("watch " .. HERB_LINK .. " 12g50s")
+    eq(ns.Watch.Get(1001).below, 125000, "buying is the default")
+    eq(ns.Watch.Get(1001).link, HERB_LINK)
+    eq(has(lastPrinted(world), "Watching " .. HERB_LINK .. ": buy at 125000c or less."), true, lastPrinted(world))
+
+    SlashCmdList.TRADINGBOOK("watch Herb ABOVE 20")
+    eq(ns.Watch.Get(1001).above, 200000)
+    eq(ns.Watch.Get(1001).below, 125000, "the other target stays")
+
+    local newStyle = "|cnIQ3:|Hitem:1002::::|h[Iron Ore Bundle]|h|r"
+    SlashCmdList.TRADINGBOOK("watch " .. newStyle .. " below 1.5")
+    eq(ns.Watch.Get(1002).below, 15000, "a link with spaces and the new colour codes")
+
+    local printed = #world.printed
+    SlashCmdList.TRADINGBOOK("watch")
+    eq(world.printed[printed + 1]:find("Watched items:", 1, true) ~= nil, true)
+    local lines = table.concat(world.printed, "\n", printed + 2)
+    eq(has(lines, HERB_LINK .. ": buy at 125000c or less, sell at 200000c or more, no price yet"), true, lines)
+    eq(has(lines, newStyle .. ": buy at 15000c or less"), true, lines)
+end)
+
+test("watch commands explain what they cannot read", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    SlashCmdList.TRADINGBOOK("watch")
+    eq(has(lastPrinted(world), "No item is watched."), true, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("watch Nothing Known 12g")
+    eq(has(lastPrinted(world), "Unknown item."), true, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("watch Herb twelve")
+    eq(has(lastPrinted(world), "Unknown price."), true, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("watch " .. HERB_LINK)
+    eq(has(lastPrinted(world), "Unknown price."), true, "a link without a price")
+    eq(next(TradingBookDB.watch), nil, "nothing watched")
+end)
+
+test("unwatch stops watching an item", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    SlashCmdList.TRADINGBOOK("watch Herb 1g")
+    SlashCmdList.TRADINGBOOK("unwatch " .. HERB_LINK)
+    eq(ns.Watch.Get(1001), nil)
+    eq(has(lastPrinted(world), "Herb is no longer watched."), true, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("unwatch Herb")
+    eq(has(lastPrinted(world), "Herb is not watched."), true, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("unwatch Nothing")
+    eq(has(lastPrinted(world), "Unknown item."), true, lastPrinted(world))
+end)
+
+test("each scan says which watched items reach their target", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    ns.RememberItem(1002, "Ore", 1, 1)
+    ns.RememberItem(1003, "Gem", 1, 1)
+    ns.RememberItem(1004, "Silk", 1, 1)
+    SlashCmdList.TRADINGBOOK("watch Herb 100c")
+    SlashCmdList.TRADINGBOOK("watch Ore above 1g")
+    SlashCmdList.TRADINGBOOK("watch Gem 10c")
+    SlashCmdList.TRADINGBOOK("watch Silk 1g")
+    local printed = #world.printed
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90), auction(1002, 1, 15000), auction(1003, 1, 50) })
+    local said = table.concat(world.printed, "\n", printed + 1)
+    eq(has(said, "Watched Herb is at 90c: buy at 100c or less."), true, said)
+    eq(has(said, "Watched Ore is at 15000c: sell at 10000c or more."), true, said)
+    eq(has(said, "Watched Gem"), false, "above its buy target")
+    eq(has(said, "Watched Silk"), false, "never on sale")
+
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    printed = #world.printed
+    answerScan({ auction(1002, 1, 15000) })
+    said = table.concat(world.printed, "\n", printed + 1)
+    eq(has(said, "Watched Herb"), false, "no longer on sale")
+    eq(has(said, "Watched Ore"), true, "said again while it holds")
+end)
+
+test("item tooltips show the targets of a watched item, even one neither held nor sold", function()
+    local ns = Mock.Boot()
+    ns.RememberItem(4242, "Gem", 1, 1)
+    SlashCmdList.TRADINGBOOK("watch Gem 2g")
+    SlashCmdList.TRADINGBOOK("watch Gem above 5g")
+    local text = hoverItem(4242)
+    eq(has(text, "Buy target=20000c"), true, text)
+    eq(has(text, "Sell target=50000c"), true, text)
+end)
+
+-- Export ----------------------------------------------------------------------------
+
+local function exportBox()
+    return Mock.FindFrames("ScrollFrameTemplate")[1].scrollChild
+end
+
+test("the export gives the history as CSV, oldest first, with amounts in copper", function()
+    local ns, world = Mock.Boot()
+    ns.Ledger.Add({ kind = "sold", t = world.now - 3600, itemID = 1001, name = "Herb, fine", qty = 4,
+        gross = 1000, cut = 50, deposit = 10, other = "Bob" })
+    ns.Ledger.Add({ kind = "post", t = world.now - 7200, itemID = 1002, name = 'Ore "raw"', qty = 2,
+        unit = 333, deposit = 20 })
+    SlashCmdList.TRADINGBOOK("export")
+    eq(TradingBookExportFrame:IsShown(), true)
+    local box = exportBox()
+    eq(box:GetText(), table.concat({
+        "date,type,item,item_id,quantity,unit_price,amount,character,other",
+        '2026-11-05 10:00,post,"Ore ""raw""",1002,2,333,-20,Primo-Hyjal,',
+        '2026-11-05 11:00,sold,"Herb, fine",1001,4,250,960,Primo-Hyjal,Bob',
+    }, "\n"))
+    eq(box.highlighted, true, "selected, ready to copy")
+    eq(box.focused, true)
+end)
+
+test("the export box cannot be edited, closes on Escape, and is fresh when reopened", function()
+    local ns, world = Mock.Boot()
+    SlashCmdList.TRADINGBOOK("export")
+    local box = exportBox()
+    local csv = box:GetText()
+    eq(csv, "date,type,item,item_id,quantity,unit_price,amount,character,other", "only the header")
+    box:SetText("typed")
+    box.scripts.OnTextChanged(box, true)
+    eq(box:GetText(), csv, "typing puts the text back")
+    box.scripts.OnEscapePressed(box)
+    eq(TradingBookExportFrame:IsShown(), false)
+
+    ns.Ledger.Add({ kind = "expired", itemID = 1001, name = "Herb", qty = 3 })
+    SlashCmdList.TRADINGBOOK("export")
+    eq(exportBox(), box, "the same window")
+    eq(has(box:GetText(), "expired,Herb,1001,3,,0,Primo-Hyjal,"), true, box:GetText())
+end)
+
+layoutTest("the export hint fits on one line beside the portrait", function()
+    Mock.Boot({ locale = layoutLocale })
+    SlashCmdList.TRADINGBOOK("export")
+    local hint
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and rawget(object, "parent") == TradingBookExportFrame then
+            hint = object
+        end
+    end
+    local rect = Mock.Rect(hint)
+    eq(hint:GetStringWidth() <= rect.right - rect.left, true,
+        ("%.0f wide for %.0f: %s"):format(hint:GetStringWidth(), rect.right - rect.left, hint:GetText()))
+end)
+
 -- Settings ---------------------------------------------------------------------
 
 local function scaleControls()

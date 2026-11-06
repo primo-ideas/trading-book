@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d天",
     ["%d h"] = "%d小時",
     ["%d min"] = "%d分鐘",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "左鍵：開啟或關閉",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "過期 %s 筆",
     ["Mail summary"] = "郵件摘要",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "離開郵箱時，在聊天框中彙整領取的售出、購買與過期。",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "沒有關注的物品。輸入 /tradingbook watch 加物品與價格即可新增。",
+    ["Watched items:"] = "關注的物品：",
+    ["buy at %s or less"] = "%s 或更低時購買",
+    ["sell at %s or more"] = "%s 或更高時出售",
+    ["now %s"] = "目前 %s",
+    ["no price yet"] = "尚無價格",
+    ["Watching %s: %s."] = "已關注 %s：%s。",
+    ["%s is no longer watched."] = "已取消關注 %s。",
+    ["%s is not watched."] = "%s 未被關注。",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "未知物品。請用 Shift+點擊將其插入指令，或輸入其準確名稱。",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "未知價格。請寫成 12g50s、50s 或 12.5 這樣的格式。",
+    ["Watched %s is at %s: %s."] = "關注的 %s 目前價格 %s：%s。",
+    ["Buy target"] = "目標買價",
+    ["Sell target"] = "目標賣價",
+    ["History as CSV"] = "CSV 格式的歷史記錄",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "文字已選取：複製後貼到試算表中。",
 }
