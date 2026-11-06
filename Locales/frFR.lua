@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d j",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Utilisation : /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Utilisation : /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clic gauche : ouvrir ou fermer",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "%s expirées",
     ["Mail summary"] = "Résumé du courrier",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "En quittant la boîte aux lettres, résume dans le chat les ventes, achats et expirations relevés.",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "Aucun objet surveillé. /tradingbook watch suivi d'un objet et d'un prix en ajoute un.",
+    ["Watched items:"] = "Objets surveillés :",
+    ["buy at %s or less"] = "acheter à %s ou moins",
+    ["sell at %s or more"] = "vendre à %s ou plus",
+    ["now %s"] = "actuellement %s",
+    ["no price yet"] = "pas encore de prix",
+    ["Watching %s: %s."] = "Surveillance de %s : %s.",
+    ["%s is no longer watched."] = "%s n'est plus surveillé.",
+    ["%s is not watched."] = "%s n'est pas surveillé.",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "Objet inconnu. Insérez-le dans la commande avec Maj+clic, ou tapez son nom exact.",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "Prix inconnu. Écrivez-le comme 12g50s, 50s ou 12.5.",
+    ["Watched %s is at %s: %s."] = "%s surveillé est à %s : %s.",
+    ["Buy target"] = "Prix d'achat visé",
+    ["Sell target"] = "Prix de vente visé",
+    ["History as CSV"] = "Historique en CSV",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "Le texte est sélectionné : copiez-le, puis collez-le dans un tableur.",
 }

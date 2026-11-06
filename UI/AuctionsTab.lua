@@ -27,10 +27,7 @@ local listTable = nil
 
 local function HistoryRow(entry)
     local quantity = entry.qty or 1
-    local unit = entry.unit
-    if entry.kind == "sold" or entry.kind == "bought" then
-        unit = (entry.gross or 0) / quantity
-    end
+    local unit = ns.Ledger.UnitPrice(entry)
     local kind = KINDS[entry.kind]
     return {
         entry = entry,

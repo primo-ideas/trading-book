@@ -69,6 +69,7 @@ local function InitDB()
     db.goldHistory = nil -- An account total from the first version, replaced by per-holder histories.
     db.ui = db.ui or {}
     db.market = db.market or { realms = {} }
+    db.watch = db.watch or {}
     ns.db = db
 end
 
@@ -239,13 +240,21 @@ end
 
 SLASH_TRADINGBOOK1 = "/tradingbook"
 SlashCmdList.TRADINGBOOK = function(message)
-    local command = message:lower():match("^%s*(%S*)")
+    -- The rest keeps its case and its links: it can name an item.
+    local command, rest = message:match("^%s*(%S*)%s*(.-)%s*$")
+    command = command:lower()
     if command == "" then
         ns.UI.Toggle()
     elseif command == "auctions" or command == "stock" or command == "stats" or command == "gold" then
         ns.UI.Open(command)
     elseif command == "scan" then
         ns.Market.Scan(true)
+    elseif command == "watch" then
+        ns.Watch.Command(rest)
+    elseif command == "unwatch" then
+        ns.Watch.UnwatchCommand(rest)
+    elseif command == "export" then
+        ns.UI.ShowExport()
     elseif command == "settings" then
         ns.UI.OpenSettings()
     elseif command == "minimap" then
@@ -253,7 +262,7 @@ SlashCmdList.TRADINGBOOK = function(message)
     elseif command == "tooltip" then
         ns.UI.ToggleItemTooltip()
     else
-        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"])
+        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"])
     end
 end
 
