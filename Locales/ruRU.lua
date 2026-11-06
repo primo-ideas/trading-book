@@ -81,7 +81,7 @@ ns.Translation = {
     ["Net profit = sales - purchases - fees"] = "Чистая прибыль = продажи - покупки - сборы",
     ["Fees = cut + unrefunded deposits + cancellation costs"] = "Сборы = комиссия + невозвращённые залоги + стоимость отмен",
     ["Share of listed quantity that sold, among auctions that ended"] = "Доля проданного количества среди завершившихся аукционов",
-    ["Priced with Auctionator, or your recent sales when it has no price"] = "Оценка по Auctionator или, если цены нет, по вашим недавним продажам",
+    ["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] = "Оценка по Auctionator или сканированию аукциона, а без них — по вашим недавним продажам",
     ["Net result per day"] = "Чистый итог за день",
     ["Net result per %d days"] = "Чистый итог за %d дн.",
     ["Net result"] = "Чистый итог",
@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d дн.",
     ["%d h"] = "%d ч",
     ["%d min"] = "%d мин",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "ЛКМ: открыть или закрыть",
@@ -141,4 +141,17 @@ ns.Translation = {
     ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "Заменяет масштаб интерфейса игры для окна: оно сохраняет размер, когда масштаб игры меняется.",
     ["Window scale"] = "Масштаб окна",
     ["The window's size, in percent like the game's UI scale."] = "Размер окна в процентах, как масштаб интерфейса игры.",
+
+    -- Auction house scan
+    ["Scan the auction house"] = "Сканировать аукцион",
+    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "Сканирует аукцион при открытии, не чаще чем раз в 15 минут, как позволяет игра, если только у Auctionator ещё нет цен. /tradingbook scan запускает сканирование вручную.",
+    ["Scanning the auction house..."] = "Сканирование аукциона...",
+    ["Auction house scanned: %s items priced."] = "Аукцион просканирован: цены для %s предметов.",
+    ["Open the auction house to scan it."] = "Откройте аукцион, чтобы просканировать его.",
+    ["The auction house can be scanned again in %s."] = "Аукцион можно будет снова просканировать через %s.",
+    ["The auction house scan stopped as the auction house closed."] = "Сканирование прервано: аукцион закрыт.",
+    ["AH price (%s ago)"] = "Цена на аукционе (%s назад)",
+    ["On the AH"] = "На аукционе",
+    ["Change since %s"] = "Изменение с %s",
+    ["Source: auction house scan of %s"] = "Источник: сканирование аукциона от %s",
 }

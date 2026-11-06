@@ -45,6 +45,11 @@ local function RegisterSettings()
     Settings.CreateCheckbox(category, tooltip,
         L["Adds what the account holds of an item and what it sold for to the item's tooltip."])
 
+    local scan = AddSetting("AutoScan", L["Scan the auction house"], Settings.VarType.Boolean, true,
+        ns.Market.IsAutoScanEnabled, ns.Market.SetAutoScanEnabled)
+    Settings.CreateCheckbox(category, scan,
+        L["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."])
+
     -- A scale of its own starts from the game's, so that turning it on changes nothing yet.
     local ownScale = AddSetting("OwnScale", L["Custom window scale"], Settings.VarType.Boolean, false,
         function()

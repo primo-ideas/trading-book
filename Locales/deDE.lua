@@ -81,7 +81,7 @@ ns.Translation = {
     ["Net profit = sales - purchases - fees"] = "Nettogewinn = Verkäufe - Käufe - Gebühren",
     ["Fees = cut + unrefunded deposits + cancellation costs"] = "Gebühren = Provision + nicht erstattete Anzahlungen + Abbruchkosten",
     ["Share of listed quantity that sold, among auctions that ended"] = "Verkaufter Anteil der angebotenen Menge bei beendeten Auktionen",
-    ["Priced with Auctionator, or your recent sales when it has no price"] = "Bewertet mit Auctionator oder, falls kein Preis vorliegt, mit deinen letzten Verkäufen",
+    ["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] = "Bewertet mit Auctionator oder dem Auktionshaus-Scan, sonst mit deinen letzten Verkäufen",
     ["Net result per day"] = "Nettoergebnis pro Tag",
     ["Net result per %d days"] = "Nettoergebnis pro %d Tage",
     ["Net result"] = "Nettoergebnis",
@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d T",
     ["%d h"] = "%d Std.",
     ["%d min"] = "%d Min.",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "Verwendung: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Verwendung: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Linksklick: öffnen oder schließen",
@@ -141,4 +141,17 @@ ns.Translation = {
     ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "Ersetzt die UI-Skalierung des Spiels für das Fenster: Es behält seine Größe, wenn sich die Skalierung des Spiels ändert.",
     ["Window scale"] = "Fensterskalierung",
     ["The window's size, in percent like the game's UI scale."] = "Die Größe des Fensters, in Prozent wie die UI-Skalierung des Spiels.",
+
+    -- Auction house scan
+    ["Scan the auction house"] = "Auktionshaus scannen",
+    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "Scannt es beim Öffnen, höchstens alle 15 Minuten, wie es das Spiel erlaubt, außer Auctionator hat bereits Preise. /tradingbook scan startet einen Scan von Hand.",
+    ["Scanning the auction house..."] = "Auktionshaus wird gescannt...",
+    ["Auction house scanned: %s items priced."] = "Auktionshaus gescannt: %s Gegenstände mit Preis.",
+    ["Open the auction house to scan it."] = "Öffne das Auktionshaus, um es zu scannen.",
+    ["The auction house can be scanned again in %s."] = "Das Auktionshaus kann in %s wieder gescannt werden.",
+    ["The auction house scan stopped as the auction house closed."] = "Der Scan wurde abgebrochen, da das Auktionshaus geschlossen wurde.",
+    ["AH price (%s ago)"] = "AH-Preis (vor %s)",
+    ["On the AH"] = "Im AH",
+    ["Change since %s"] = "Änderung seit %s",
+    ["Source: auction house scan of %s"] = "Quelle: Auktionshaus-Scan vom %s",
 }

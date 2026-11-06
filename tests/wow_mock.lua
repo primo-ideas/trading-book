@@ -563,7 +563,15 @@ local function InstallApi()
     }
 
     G.UnitName = function() return "Primo" end
-    G.GetRealmName = function() return "Hyjal" end
+    G.GetRealmName = function() return world.realm end
+    G.GetNormalizedRealmName = function() return world.realm end
+    G.GetAutoCompleteRealms = function()
+        local realms = {}
+        for index, realm in ipairs(world.connectedRealms) do
+            realms[index] = realm
+        end
+        return realms
+    end
     G.UnitClass = function() return "Mage", "MAGE" end
     G.GetMoney = function() return world.money end
 
@@ -629,6 +637,18 @@ local function InstallApi()
         CalculateItemDeposit = function(_, _, quantity) return 100 * quantity end,
         CalculateCommodityDeposit = function(_, _, quantity) return 10 * quantity end,
         GetOwnedAuctions = function() return world.owned end,
+        -- The whole auction house, read back by 0-based index once the event fires.
+        ReplicateItems = function() world.replicateRequests = world.replicateRequests + 1 end,
+        GetNumReplicateItems = function() return #world.replicate end,
+        GetReplicateItemInfo = function(index)
+            assert(type(index) == "number" and index >= 0 and index < #world.replicate,
+                "Replicate index out of range: " .. tostring(index))
+            world.replicateReads = world.replicateReads + 1
+            local auction = world.replicate[index + 1]
+            return "Item " .. auction.itemID, 1000 + auction.itemID, auction.count, 1, true, 1, "", 0, 0,
+                auction.buyout, 0, nil, nil, "Seller", "Seller-Hyjal", auction.saleStatus or 0,
+                auction.itemID, true
+        end,
         QueryOwnedAuctions = function(sorts)
             assert(type(sorts) == "table" and sorts[1] and sorts[1].sortOrder ~= nil)
             world.ownedQueries = world.ownedQueries + 1
@@ -752,6 +772,11 @@ function Mock.IsControlEnabled(control)
     return control.predicate == nil or control.predicate() == true
 end
 
+-- What a full scan of the auction house returns: { itemID, count, buyout, saleStatus }.
+function Mock.SetReplicate(auctions)
+    world.replicate = auctions
+end
+
 -- Money as the client writes it, with coin icons, for checks on text width.
 function Mock.UseRealisticMoney()
     local coin = "|TInterface\\MoneyFrame\\UI-GoldIcon:14:14|t"
@@ -809,7 +834,7 @@ function Mock.SetBagItem(bag, slot, itemID, name, count, options)
 end
 
 -- Loads the addon as the client would, on a clean client.
--- options: locale, subjects, db, money
+-- options: locale, subjects, db, money, realm, connectedRealms
 function Mock.Boot(options)
     options = options or {}
     world = {
@@ -840,6 +865,11 @@ function Mock.Boot(options)
         cursorY = 0,
         settingsCategories = {},
         settings = {},
+        realm = options.realm or "Hyjal",
+        connectedRealms = options.connectedRealms or {},
+        replicate = {},
+        replicateRequests = 0,
+        replicateReads = 0,
     }
     objects = {}
 
