@@ -30,6 +30,15 @@ Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it b
 
 Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get a Trading Book section: the account's stock of that item by character and place, your average sale price over 90 days, and your last sale. Nothing is added for an item you neither hold nor ever sold, nor in Trading Book's own window, which already shows the same. `/tradingbook tooltip` hides the section or brings it back.
 
+The settings are in the game's options, under AddOns > Trading Book. A right-click on the minimap icon or on the addon menu entry opens them, as does `/tradingbook settings`.
+
+| Setting | Effect |
+| --- | --- |
+| **Minimap icon** | Shows or hides the icon, like `/tradingbook minimap`. |
+| **Item tooltips** | Adds the Trading Book section to item tooltips or not, like `/tradingbook tooltip`. |
+| **Custom window scale** | Gives the window a scale of its own, which replaces the game's UI scale: the window then keeps its size when the game's scale changes. Turned on, it starts from the game's current scale, so nothing moves yet. Turned off, the window follows the game's scale again. |
+| **Window scale** | That scale, from 50% to 120% in steps of 5%, in the same percent as the game's UI scale. Greyed out while the window follows the game. The window stays centred on the same spot when it changes. |
+
 | Tab | Content |
 | --- | --- |
 | **Auctions** | History of sales, purchases, listings, expiries and cancellations, plus your active auctions. |
@@ -76,14 +85,15 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 The fake client used by the tests draws nothing and reflects my reading of the API. These points remain to be confirmed:
 
 1. **Interface**: window and portrait, tabs, character menu, columns, scrolling, charts, minimap icon (appearance, dragging, position kept after relogging). The tests check the margins, but with an estimated text width.
-2. **Sale**: the cut and deposit shown match the mail's invoice. This is the most uncertain point: if the invoice cannot be read when collecting, the amount falls back to the mail's money and the cut to zero.
-3. **Purchase**: the price is filled in after collecting the mail.
-4. **Listing**: a single row with the right deposit, including with Auctionator and in a multi-post.
-5. **Cancellation**: the cost is filled in.
-6. **Warband bank**: its content and gold appear when the bank opens.
-7. **Full mailbox**: a collection that fails on full bags, then succeeds, only counts once.
-8. **Item tooltips**: the section appears on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's window nor on the comparison tooltips, and hovering an item in combat raises no error.
-9. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
+2. **Settings**: the page appears under AddOns, opens from a right-click on the icon and on the addon menu entry, greys out the scale slider while the custom scale is off, and "Defaults" brings back the game's scale. With a custom scale, the window keeps its size when the game's UI scale changes, stays where it was when its scale changes, and its menus and tooltips still line up with it.
+3. **Sale**: the cut and deposit shown match the mail's invoice. This is the most uncertain point: if the invoice cannot be read when collecting, the amount falls back to the mail's money and the cut to zero.
+4. **Purchase**: the price is filled in after collecting the mail.
+5. **Listing**: a single row with the right deposit, including with Auctionator and in a multi-post.
+6. **Cancellation**: the cost is filled in.
+7. **Warband bank**: its content and gold appear when the bank opens.
+8. **Full mailbox**: a collection that fails on full bags, then succeeds, only counts once.
+9. **Item tooltips**: the section appears on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's window nor on the comparison tooltips, and hovering an item in combat raises no error.
+10. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
 

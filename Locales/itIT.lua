@@ -117,10 +117,11 @@ ns.Translation = {
     ["%d d"] = "%d g",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clic sinistro: apri o chiudi",
+    ["Right-click: settings"] = "Clic destro: impostazioni",
     ["Drag: move"] = "Trascina: sposta",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: nascondi questa icona",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "Icona della minimappa nascosta. Digita /tradingbook minimap per ripristinarla.",
@@ -130,4 +131,14 @@ ns.Translation = {
     ["Last sale (%s)"] = "Ultima vendita (%s)",
     ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "Righe nascoste nei tooltip degli oggetti. Digita /tradingbook tooltip per ripristinarle.",
     ["Item tooltip lines shown."] = "Righe di nuovo visibili nei tooltip degli oggetti.",
+
+    -- Settings
+    ["Minimap icon"] = "Icona della minimappa",
+    ["Shows Trading Book's icon on the edge of the minimap."] = "Mostra l'icona di Trading Book sul bordo della minimappa.",
+    ["Item tooltips"] = "Tooltip degli oggetti",
+    ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "Aggiunge al tooltip di un oggetto quanto ne possiede l'account e a quanto è stato venduto.",
+    ["Custom window scale"] = "Scala personalizzata della finestra",
+    ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "Sostituisce la scala dell'interfaccia del gioco per la finestra: mantiene le sue dimensioni quando la scala del gioco cambia.",
+    ["Window scale"] = "Scala della finestra",
+    ["The window's size, in percent like the game's UI scale."] = "Le dimensioni della finestra, in percentuale come la scala dell'interfaccia del gioco.",
 }
