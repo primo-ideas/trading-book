@@ -1981,6 +1981,138 @@ test("saved data from before the minimap icon gets it at the default position", 
     eq(TradingBookDB.ui.position.point, "CENTER", "other settings untouched")
 end)
 
+-- Item tooltips ----------------------------------------------------------------
+
+-- The lines Trading Book adds when an item is hovered somewhere in the game.
+local function hoverItem(itemID)
+    GameTooltip.lines = {}
+    GameTooltip:SetOwner(UIParent, "ANCHOR_RIGHT")
+    GameTooltip:SetItemByID(itemID)
+    return table.concat(GameTooltip.lines, "\n")
+end
+
+local function has(text, part)
+    return text:find(part, 1, true) ~= nil
+end
+
+test("looking one item up gives the same row as the whole stock", function()
+    local ns, world = Mock.Boot()
+    Mock.SetBagItem(0, 1, 1001, "Herb", 10)
+    Mock.SetBagItem(6, 1, 1001, "Herb", 20)
+    Mock.SetBagItem(12, 1, 1001, "Herb", 40)
+    Mock.SetBagItem(0, 2, 1002, "Ore", 3)
+    Mock.Fire("BANKFRAME_OPENED")
+    Mock.RunTimers()
+    TradingBookDB.characters["Alt-Hyjal"] = {
+        money = 0, stock = { bags = { [1001] = 1 }, bank = {}, mail = { [1001] = 5 } },
+        auctions = {
+            { auctionID = 1, itemID = 1001, qty = 3, expiresAt = world.now + 3600 },
+            { auctionID = 2, itemID = 1001, qty = 50, sold = true, expiresAt = world.now + 3600 },
+            { auctionID = 3, itemID = 1001, qty = 70, expiresAt = world.now - 60 },
+        },
+    }
+    local whole = findRow(ns.Stockpile.GetRows(), 1001)
+    local single = ns.Stockpile.GetItemRow(1001)
+    for _, place in ipairs({ "total", "bags", "bank", "warband", "mail", "auctions" }) do
+        eq(single[place], whole[place], place)
+    end
+    eq(single.total, 79, "sold and ended auctions left out")
+    eq(single.characters["Alt-Hyjal"].auctions, 3, "per character")
+    eq(ns.Stockpile.GetItemRow(4242), nil, "an item not held")
+end)
+
+test("an item's tooltip shows the account's stock, by character and place", function()
+    local _, world = Mock.Boot()
+    Mock.SetBagItem(0, 1, 1001, "Herb", 10)
+    Mock.SetBagItem(6, 1, 1001, "Herb", 20)
+    Mock.SetBagItem(12, 1, 1001, "Herb", 40)
+    Mock.Fire("BANKFRAME_OPENED")
+    Mock.RunTimers()
+    TradingBookDB.characters["Alt-Hyjal"] = {
+        money = 0, class = "WARRIOR", stock = { bags = {}, bank = {}, mail = { [1001] = 5 } },
+        auctions = { { auctionID = 7, itemID = 1001, qty = 3, expiresAt = world.now + 3600 } },
+    }
+    local text = hoverItem(1001)
+    eq(has(text, "Trading Book"), true, "a header: " .. text)
+    eq(has(text, "Stock=78"), true, "the account total")
+    eq(has(text, "Primo|r=Bags 10, Bank 20"), true, "the player, by place")
+    eq(has(text, "Alt|r=Mail 5, AH 3"), true, "an alt, auctions included")
+    eq(has(text, "Warband bank=40"), true, "the warband bank")
+    eq(has(text, "sale"), false, "no sale lines for an item never sold")
+end)
+
+test("an item's tooltip shows its average sale over 90 days and its last sale", function()
+    local ns, world = Mock.Boot()
+    local day = 86400
+    ns.Ledger.Add({ kind = "sold", t = world.now - 200 * day, itemID = 1001, name = "Herb", qty = 1, gross = 99900 })
+    ns.Ledger.Add({ kind = "sold", t = world.now - day, itemID = 1001, name = "Herb", qty = 1, gross = 400 })
+    -- Collected last, but sent earlier: dates come from the mail.
+    ns.Ledger.Add({ kind = "sold", t = world.now - 10 * day, itemID = 1001, name = "Herb", qty = 2, gross = 200 })
+    ns.Ledger.Add({ kind = "bought", itemID = 1001, name = "Herb", qty = 1, gross = 5 })
+
+    local text = hoverItem(1001)
+    eq(has(text, "Avg. sale (90 days)=200c"), true, "per unit, recent sales only: " .. text)
+    eq(has(text, "Last sale (11/04)=400c"), true, "the latest by date, per unit")
+    eq(has(text, "Stock="), false, "no stock line for an item not held")
+
+    ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 4, gross = 2000 })
+    text = hoverItem(1001)
+    eq(has(text, "Last sale (11/05)=500c"), true, "follows the ledger: " .. text)
+    eq(has(text, "Avg. sale (90 days)=371c"), true, "2600 over 7 units")
+end)
+
+test("an item sold only long ago shows its last sale but no average", function()
+    local ns, world = Mock.Boot()
+    local longAgo = world.now - 200 * 86400
+    ns.Ledger.Add({ kind = "sold", t = longAgo, itemID = 1002, name = "Ore", qty = 2, gross = 1000 })
+    local text = hoverItem(1002)
+    eq(has(text, "Avg. sale"), false, "no recent sale to average: " .. text)
+    eq(has(text, "Last sale (" .. ns.FormatDay(longAgo) .. ")=500c"), true, "the last one")
+end)
+
+test("an item the account never held nor sold gets no lines", function()
+    Mock.Boot()
+    eq(hoverItem(4242), "")
+end)
+
+test("the window's own item tooltips do not get the lines twice", function()
+    local _, list = stockFixture()
+    local row = list.ScrollBox.rendered[1]
+    GameTooltip.lines = {}
+    row.scripts.OnEnter(row)
+    local text = table.concat(GameTooltip.lines, "\n")
+    eq(has(text, "Trading Book"), false, "no extra section: " .. text)
+    local _, count = text:gsub("Bags 10, Bank 20", "")
+    eq(count, 1, "holdings listed once")
+end)
+
+test("chat links get the lines, comparison tooltips do not", function()
+    local ns = Mock.Boot()
+    ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 1, gross = 100 })
+    ItemRefTooltip:SetOwner(UIParent, "ANCHOR_PRESERVE")
+    ItemRefTooltip:SetHyperlink("|cffffffff|Hitem:1001::::|h[Herb]|h|r")
+    eq(has(table.concat(ItemRefTooltip.lines, "\n"), "Last sale"), true, "chat link")
+
+    local comparison = Mock.NewTooltip()
+    comparison:SetOwner(GameTooltip, "ANCHOR_NONE")
+    comparison:SetItemByID(1001)
+    eq(#comparison.lines, 0, "comparison tooltip")
+end)
+
+test("/tradingbook tooltip hides the lines for good, and brings them back", function()
+    local ns, world = Mock.Boot()
+    ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 1, gross = 100 })
+    SlashCmdList.TRADINGBOOK("tooltip")
+    eq(hoverItem(1001), "", "hidden")
+    eq(#world.printed, 1, "says how to bring them back")
+
+    world = select(2, Mock.Boot({ db = TradingBookDB }))
+    eq(hoverItem(1001), "", "still hidden after a reload")
+    SlashCmdList.TRADINGBOOK("TOOLTIP")
+    eq(has(hoverItem(1001), "Last sale"), true, "shown again")
+    eq(#world.printed, 1, "says so")
+end)
+
 test("the slash command opens tabs and explains itself otherwise", function()
     local ns, world = Mock.Boot()
     SlashCmdList.TRADINGBOOK("")

@@ -52,6 +52,7 @@ UI\Widgets.lua
 UI\Charts.lua
 UI\MainFrame.lua
 UI\MinimapButton.lua
+UI\ItemTooltip.lua
 UI\AuctionsTab.lua
 UI\StockTab.lua
 UI\StatsTab.lua

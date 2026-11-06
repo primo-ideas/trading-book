@@ -117,11 +117,17 @@ ns.Translation = {
     ["%d d"] = "%d j",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap]"] = "Utilisation : /tradingbook [auctions | stock | stats | gold | minimap]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "Utilisation : /tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clic gauche : ouvrir ou fermer",
     ["Drag: move"] = "Glisser : déplacer",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap : masquer cette icône",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "Icône de la minicarte masquée. Tapez /tradingbook minimap pour la réafficher.",
+
+    -- Item tooltips
+    ["Avg. sale (90 days)"] = "Vente moy. (90 jours)",
+    ["Last sale (%s)"] = "Dernière vente (%s)",
+    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "Lignes masquées dans les infobulles des objets. Tapez /tradingbook tooltip pour les réafficher.",
+    ["Item tooltip lines shown."] = "Lignes de nouveau affichées dans les infobulles des objets.",
 }

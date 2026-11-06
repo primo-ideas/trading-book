@@ -92,6 +92,7 @@ function Object:SetShown(shown) if shown then self:Show() else self:Hide() end e
 function Object:IsShown() return self.shown end
 function Object:SetText(text) self.text = text end
 function Object:GetText() return self.text end
+function Object:GetParent() return rawget(self, "parent") end
 function Object:GetFontString() return self.fontString end
 function Object:GetPoint() return "CENTER", nil, "CENTER", 10, 20 end
 function Object:SetChecked(checked) self.checked = checked end
@@ -344,6 +345,34 @@ local function CreateFrameMock(frameType, name, parent, template)
     return frame
 end
 
+-- Item tooltips run the post calls registered for items once filled, as in the client.
+local TOOLTIP_DATA_ITEM = 0
+
+local function NewTooltip()
+    local tooltip = NewObject({ lines = {} })
+    local function Fill(self, itemID)
+        for _, postCall in ipairs(world.tooltipPostCalls[TOOLTIP_DATA_ITEM] or {}) do
+            postCall(self, { type = TOOLTIP_DATA_ITEM, id = itemID })
+        end
+    end
+    function tooltip.SetOwner(self, owner) self.owner = owner end
+    function tooltip.GetOwner(self) return rawget(self, "owner") end
+    function tooltip.SetHyperlink(self, link)
+        self.link = link
+        local itemID = link:match("|Hitem:(%d+)")
+        if itemID then
+            Fill(self, tonumber(itemID))
+        end
+    end
+    function tooltip.SetItemByID(self, id)
+        self.itemID = id
+        Fill(self, id)
+    end
+    function tooltip.AddLine(self, line) table.insert(self.lines, line) end
+    function tooltip.AddDoubleLine(self, left, right) table.insert(self.lines, left .. "=" .. right) end
+    return tooltip
+end
+
 local function SplitBagSlot(location)
     return world.bags[location.bag] and world.bags[location.bag][location.slot]
 end
@@ -381,12 +410,15 @@ local function InstallApi()
     G.SlashCmdList = {}
     G.ITEM_QUALITY_COLORS = { [0] = { r = 0.6, g = 0.6, b = 0.6 }, [1] = { r = 1, g = 1, b = 1 }, [2] = { r = 0, g = 1, b = 0 }, [3] = { r = 0, g = 0.44, b = 0.87 } }
     G.RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 }, WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } }
-    G.GameTooltip = NewObject({ lines = {} })
-    function G.GameTooltip.SetOwner() end
-    function G.GameTooltip.SetHyperlink(self, link) self.link = link end
-    function G.GameTooltip.SetItemByID(self, id) self.itemID = id end
-    function G.GameTooltip.AddLine(self, line) table.insert(self.lines, line) end
-    function G.GameTooltip.AddDoubleLine(self, left, right) table.insert(self.lines, left .. "=" .. right) end
+    G.GameTooltip = NewTooltip()
+    G.ItemRefTooltip = NewTooltip()
+    G.TooltipDataProcessor = {
+        AddTooltipPostCall = function(dataType, fn)
+            assert(dataType ~= nil and type(fn) == "function")
+            world.tooltipPostCalls[dataType] = world.tooltipPostCalls[dataType] or {}
+            table.insert(world.tooltipPostCalls[dataType], fn)
+        end,
+    }
 
     G.ButtonFrameTemplate_HideButtonBar = function(frame)
         frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
@@ -442,6 +474,7 @@ local function InstallApi()
         AuctionHouseSortOrder = { Price = 0, Name = 1 },
         AuctionStatus = { Active = 0, Sold = 1 },
         BankType = { Character = 0, Guild = 1, Account = 2 },
+        TooltipDataType = { Item = TOOLTIP_DATA_ITEM, Spell = 1, Unit = 2 },
         BagIndex = {
             Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5,
             CharacterBankTab_1 = 6, CharacterBankTab_2 = 7, AccountBankTab_1 = 12,
@@ -555,6 +588,9 @@ function Mock.RunTimers()
     end
 end
 
+-- Another tooltip of the client, such as the comparison one beside an item.
+Mock.NewTooltip = NewTooltip
+
 function Mock.FindFrames(template)
     local found = {}
     for _, frame in ipairs(objects) do
@@ -657,6 +693,7 @@ function Mock.Boot(options)
         takes = {},
         bodiesLoaded = 0,
         itemCache = {},
+        tooltipPostCalls = {},
         money = options.money or 0,
         warbandMoney = 0,
         cursorX = 0,

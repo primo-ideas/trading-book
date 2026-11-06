@@ -14,13 +14,6 @@ local PLACE_FILTERS = {
     { value = "auctions", label = L["AH"] },
 }
 
-local PLACES = {
-    { key = "bags", label = L["Bags"] },
-    { key = "bank", label = L["Bank"] },
-    { key = "mail", label = L["Mail"] },
-    { key = "auctions", label = L["AH"] },
-}
-
 local TILES = {
     { key = "value", label = L["Stock value"], icon = "Interface\\Icons\\INV_Box_01",
         hint = L["Priced with Auctionator, or your recent sales when it has no price"] },
@@ -82,24 +75,7 @@ end
 local function ShowRowTooltip(owner, row)
     UI.ShowItemTooltip(owner, row.itemID, nil, row.name)
     GameTooltip:AddLine(" ")
-    local keys = {}
-    for key in pairs(row.characters) do
-        keys[#keys + 1] = key
-    end
-    table.sort(keys)
-    for _, key in ipairs(keys) do
-        local parts = {}
-        for _, location in ipairs(PLACES) do
-            local quantity = row.characters[key][location.key]
-            if quantity then
-                parts[#parts + 1] = location.label .. " " .. BreakUpLargeNumbers(quantity)
-            end
-        end
-        GameTooltip:AddDoubleLine(ns.ColoredCharacterName(key), table.concat(parts, ", "), 0.8, 0.8, 0.8, 1, 1, 1)
-    end
-    if row.warband > 0 then
-        GameTooltip:AddDoubleLine(L["Warband bank"], BreakUpLargeNumbers(row.warband), 0.8, 0.8, 0.8, 1, 1, 1)
-    end
+    UI.AddHoldingLines(GameTooltip, row)
     if row.change then
         GameTooltip:AddDoubleLine(L["Change over 7 days"], FormatChange(row.change), 0.8, 0.8, 0.8, 1, 1, 1)
     end

@@ -117,11 +117,17 @@ ns.Translation = {
     ["%d d"] = "%d天",
     ["%d h"] = "%d小时",
     ["%d min"] = "%d分钟",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap]"] = "用法：/tradingbook [auctions | stock | stats | gold | minimap]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "左键：打开或关闭",
     ["Drag: move"] = "拖动：移动",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap：隐藏此图标",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "小地图图标已隐藏。输入 /tradingbook minimap 可重新显示。",
+
+    -- Item tooltips
+    ["Avg. sale (90 days)"] = "平均售价（90天）",
+    ["Last sale (%s)"] = "最近售出（%s）",
+    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "已隐藏物品鼠标提示中的信息。输入 /tradingbook tooltip 可重新显示。",
+    ["Item tooltip lines shown."] = "已重新在物品鼠标提示中显示信息。",
 }
