@@ -28,21 +28,45 @@ local auctionHouseOpen = false
 local state = nil -- nil, "waiting" for the server or "reading" its answer
 local scan = nil
 local realmKey = nil
+local realmGroup = nil
+
+-- Realm names as the client normalizes them, without spaces or dashes, so that a
+-- character key's realm compares with the list of connected realms.
+local function NormalizeRealm(realm)
+    return (realm:gsub("[%s%-]", ""))
+end
 
 -- Connected realms share one auction house, so they share their prices. The list
 -- may leave the player's own realm out, which is added so that every realm of the
 -- group finds the same key.
-local function RealmKey()
-    local realms = { GetNormalizedRealmName() or GetRealmName() }
+local function LoadRealmGroup()
+    if realmKey then
+        return
+    end
+    local realms = { NormalizeRealm(GetNormalizedRealmName() or GetRealmName()) }
     for _, realm in ipairs(GetAutoCompleteRealms()) do
-        table.insert(realms, realm)
+        table.insert(realms, NormalizeRealm(realm))
     end
     table.sort(realms)
-    return realms[1]
+    realmKey = realms[1]
+    realmGroup = {}
+    for _, realm in ipairs(realms) do
+        realmGroup[realm] = true
+    end
+end
+
+-- Whether a character, from its key, sells on this realm's auction house.
+function Market.SharesAuctionHouse(characterKey)
+    local realm = characterKey and characterKey:match("^[^-]+%-(.+)$")
+    if not realm then
+        return false
+    end
+    LoadRealmGroup()
+    return realmGroup[NormalizeRealm(realm)] == true
 end
 
 local function RealmData(create)
-    realmKey = realmKey or RealmKey()
+    LoadRealmGroup()
     local realms = ns.db.market.realms
     if not realms[realmKey] and create then
         realms[realmKey] = { items = {}, history = {} }
@@ -67,6 +91,12 @@ function Market.GetItem(itemID)
         seenAt = saved[SEEN],
         scannedAt = data.scannedAt,
     }
+end
+
+-- When this realm's auction house was last scanned, or nil.
+function Market.GetScannedAt()
+    local data = RealmData()
+    return data and data.scannedAt
 end
 
 -- The change of the current price against the latest daily price at least a week

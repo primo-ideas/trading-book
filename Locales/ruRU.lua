@@ -154,4 +154,16 @@ ns.Translation = {
     ["On the AH"] = "На аукционе",
     ["Change since %s"] = "Изменение с %s",
     ["Source: auction house scan of %s"] = "Источник: сканирование аукциона от %s",
+
+    -- Undercuts and mail summary
+    ["Undercut auctions: %s. The Active list of the Auctions tab marks them."] = "Перебитые аукционы: %s. Они отмечены в списке «Активные» вкладки «Аукционы».",
+    ["Undercut"] = "Цена перебита",
+    ["Lowest on the AH"] = "Дешевле всего на аукционе",
+    ["AH scan"] = "Сканирование аукциона",
+    ["Collected from the mail: %s."] = "Получено с почты: %s.",
+    ["%s sales, %s received"] = "продаж: %s, получено %s",
+    ["%s purchases, %s paid"] = "покупок: %s, оплачено %s",
+    ["%s expired"] = "истекло: %s",
+    ["Mail summary"] = "Сводка почты",
+    ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Когда вы отходите от почтового ящика, кратко сообщает в чате о полученных продажах, покупках и истекших аукционах.",
 }

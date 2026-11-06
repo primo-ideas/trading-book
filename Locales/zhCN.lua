@@ -154,4 +154,16 @@ ns.Translation = {
     ["On the AH"] = "拍卖行在售",
     ["Change since %s"] = "自 %s 以来的变化",
     ["Source: auction house scan of %s"] = "来源：%s 的拍卖行扫描",
+
+    -- Undercuts and mail summary
+    ["Undercut auctions: %s. The Active list of the Auctions tab marks them."] = "被压价的拍卖：%s 件。拍卖标签页的“进行中”列表会标出它们。",
+    ["Undercut"] = "被压价",
+    ["Lowest on the AH"] = "拍卖行最低价",
+    ["AH scan"] = "拍卖行扫描",
+    ["Collected from the mail: %s."] = "已从邮件领取：%s。",
+    ["%s sales, %s received"] = "售出 %s 笔，收入 %s",
+    ["%s purchases, %s paid"] = "购买 %s 笔，支出 %s",
+    ["%s expired"] = "过期 %s 笔",
+    ["Mail summary"] = "邮件摘要",
+    ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "离开邮箱时，在聊天框中汇总领取的售出、购买和过期。",
 }
