@@ -13,7 +13,8 @@ local function AddLines(tooltip, itemID)
     local stock = ns.Stockpile.GetItemRow(itemID)
     local sales = ns.Stats.GetSaleStats(itemID)
     local market = not ns.Stats.GetAuctionatorPrice(itemID) and ns.Market.GetItem(itemID)
-    if not stock and not sales and not market then
+    local watched = ns.Watch.Get(itemID)
+    if not stock and not sales and not market and not watched then
         return
     end
     local accent = UI.Colors.accent
@@ -35,6 +36,12 @@ local function AddLines(tooltip, itemID)
         if change then
             UI.AddValueLine(tooltip, L["Change since %s"]:format(ns.FormatDay(since)), ns.FormatPercent(change, true))
         end
+    end
+    if watched and watched.below then
+        UI.AddValueLine(tooltip, L["Buy target"], ns.FormatMoney(watched.below))
+    end
+    if watched and watched.above then
+        UI.AddValueLine(tooltip, L["Sell target"], ns.FormatMoney(watched.above))
     end
     if sales and sales.average then
         UI.AddValueLine(tooltip, L["Avg. sale (90 days)"], ns.FormatMoney(sales.average))

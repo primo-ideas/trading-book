@@ -12,7 +12,7 @@ local allowedGlobals = {
     -- Written by the addon.
     TradingBook = true, TradingBookDB = true, SLASH_TRADINGBOOK1 = true,
     TradingBook_OnAddonCompartmentClick = true, TradingBookMainFrame = true,
-    TradingBookMinimapButton = true,
+    TradingBookMinimapButton = true, TradingBookExportFrame = true,
     -- Optional dependency, nil when not installed.
     Auctionator = true,
 }
@@ -24,11 +24,13 @@ local NO_OP_METHODS = {
     "SetWordWrap", "SetAutoFocus", "SetFixedFrameStrata", "SetFrameLevel",
     "SetFixedFrameLevel", "RegisterForClicks", "SetHighlightTexture",
     "LockHighlight", "UnlockHighlight", "SetThickness", "SetPortraitToAsset",
+    "SetMultiLine", "SetMaxLetters", "SetFontObject", "ClearFocus",
 }
 
 -- Fields that may be read before being set, or never set, on a widget.
 local OPTIONAL_FIELDS = {
     cells = true, markers = true, Stripe = true, Icon = true, data = true, bar = true,
+    scrollChild = true, focused = true, highlighted = true,
     Text = true, Value = true, Bar = true, Inset = true, header = true, onEnter = true,
     OnSlotLeave = true, Empty = true, Label = true,
 }
@@ -101,6 +103,9 @@ function Object:GetPoint()
     end
 end
 function Object:SetChecked(checked) self.checked = checked end
+function Object:SetScrollChild(child) self.scrollChild = child end
+function Object:SetFocus() self.focused = true end
+function Object:HighlightText() self.highlighted = true end
 function Object:GetChecked() return self.checked end
 function Object:SetScript(name, fn) self.scripts[name] = fn end
 function Object:GetScript(name) return self.scripts[name] end
@@ -356,6 +361,10 @@ local TEMPLATES = {
                 self.rendered[index] = row
             end
         end
+    end,
+    -- Its OnLoad gives it a scroll bar of its own, outside on its right.
+    ScrollFrameTemplate = function(frame)
+        frame.ScrollBar = NewObject({ parent = frame, frameType = "EventFrame" })
     end,
     WowTrimScrollBar = function(frame)
         frame.width = 16
@@ -878,6 +887,7 @@ function Mock.Boot(options)
     realG.TradingBook = nil
     realG.TradingBookMainFrame = nil
     realG.TradingBookMinimapButton = nil
+    realG.TradingBookExportFrame = nil
     InstallApi()
 
     setmetatable(realG, {

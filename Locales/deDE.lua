@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d T",
     ["%d h"] = "%d Std.",
     ["%d min"] = "%d Min.",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Verwendung: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Verwendung: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Linksklick: öffnen oder schließen",
@@ -166,4 +166,22 @@ ns.Translation = {
     ["%s expired"] = "%s abgelaufen",
     ["Mail summary"] = "Post-Zusammenfassung",
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Fasst beim Verlassen des Briefkastens die abgeholten Verkäufe, Käufe und abgelaufenen Auktionen im Chat zusammen.",
+
+    -- Watch list and export
+    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "Kein Gegenstand wird beobachtet. /tradingbook watch, gefolgt von einem Gegenstand und einem Preis, fügt einen hinzu.",
+    ["Watched items:"] = "Beobachtete Gegenstände:",
+    ["buy at %s or less"] = "kaufen bei %s oder weniger",
+    ["sell at %s or more"] = "verkaufen bei %s oder mehr",
+    ["now %s"] = "jetzt %s",
+    ["no price yet"] = "noch kein Preis",
+    ["Watching %s: %s."] = "Beobachte %s: %s.",
+    ["%s is no longer watched."] = "%s wird nicht mehr beobachtet.",
+    ["%s is not watched."] = "%s wird nicht beobachtet.",
+    ["Unknown item. Shift-click it into the command, or type its exact name."] = "Unbekannter Gegenstand. Füge ihn per Umschalt-Klick in den Befehl ein oder gib seinen genauen Namen ein.",
+    ["Unknown price. Write it like 12g50s, 50s or 12.5."] = "Unbekannter Preis. Schreib ihn z. B. als 12g50s, 50s oder 12.5.",
+    ["Watched %s is at %s: %s."] = "Beobachteter Gegenstand %s steht bei %s: %s.",
+    ["Buy target"] = "Kaufziel",
+    ["Sell target"] = "Verkaufsziel",
+    ["History as CSV"] = "Verlauf als CSV",
+    ["The text is selected: copy it, then paste it into a spreadsheet."] = "Der Text ist markiert: Kopiere ihn und füge ihn in eine Tabellenkalkulation ein.",
 }

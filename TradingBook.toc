@@ -48,6 +48,7 @@ Mail.lua
 Stockpile.lua
 Stats.lua
 Market.lua
+Watch.lua
 Gold.lua
 UI\Widgets.lua
 UI\Charts.lua
@@ -55,6 +56,7 @@ UI\MainFrame.lua
 UI\MinimapButton.lua
 UI\ItemTooltip.lua
 UI\Options.lua
+UI\Export.lua
 UI\AuctionsTab.lua
 UI\StockTab.lua
 UI\StatsTab.lua
