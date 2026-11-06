@@ -16,7 +16,7 @@ local PLACE_FILTERS = {
 
 local TILES = {
     { key = "value", label = L["Stock value"], icon = "Interface\\Icons\\INV_Box_01",
-        hint = L["Priced with Auctionator, or your recent sales when it has no price"] },
+        hint = L["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] },
     { key = "items", label = L["Different items"], icon = "Interface\\Icons\\INV_Misc_Bag_10" },
     { key = "units", label = L["Units"], icon = "Interface\\Icons\\INV_Crate_03" },
 }
@@ -56,7 +56,7 @@ local function BuildRows()
         local quantity = row[quantityKey]
         if quantity > 0 then
             row.name = ns.GetItemDetails(row.itemID)
-            row.unitPrice, row.priceSource = ns.Stats.GetUnitPrice(row.itemID)
+            row.unitPrice, row.priceSource, row.priceSeenAt = ns.Stats.GetUnitPrice(row.itemID)
             row.value = row.unitPrice and row.unitPrice * quantity or nil
             totals.value = totals.value + (row.value or 0)
             totals.items = totals.items + 1
@@ -72,6 +72,15 @@ local function BuildRows()
     return rows, totals
 end
 
+local function PriceSource(row)
+    if row.priceSource == "auctionator" then
+        return L["Source: Auctionator"]
+    elseif row.priceSource == "scan" then
+        return L["Source: auction house scan of %s"]:format(ns.FormatDate(row.priceSeenAt))
+    end
+    return L["Source: your recent sales"]
+end
+
 local function ShowRowTooltip(owner, row)
     UI.ShowItemTooltip(owner, row.itemID, nil, row.name)
     GameTooltip:AddLine(" ")
@@ -81,7 +90,7 @@ local function ShowRowTooltip(owner, row)
     end
     if row.unitPrice then
         UI.AddMoneyLine(L["Unit value"], row.unitPrice)
-        GameTooltip:AddLine(row.priceSource == "auctionator" and L["Source: Auctionator"] or L["Source: your recent sales"], 0.6, 0.6, 0.6)
+        GameTooltip:AddLine(PriceSource(row), 0.6, 0.6, 0.6)
     end
     GameTooltip:Show()
 end

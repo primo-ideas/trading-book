@@ -28,7 +28,9 @@ The installed folder is replaced every time, so keep nothing in it. Saved data l
 
 Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it back.
 
-Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get a Trading Book section: the account's stock of that item by character and place, your average sale price over 90 days, and your last sale. Nothing is added for an item you neither hold nor ever sold, nor in Trading Book's own window, which already shows the same. `/tradingbook tooltip` hides the section or brings it back.
+Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get a Trading Book section: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Without a price from Auctionator, which shows its own, the section also gives the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. Nothing is added for an item that has none of these, nor in Trading Book's own window, which already shows the same. `/tradingbook tooltip` hides the section or brings it back.
+
+When Auctionator is not installed, or has no prices, Trading Book scans the auction house itself when it opens: one request reads every auction of the realm, at most every 15 minutes, as the game allows. `/tradingbook scan` starts a scan by hand, even with Auctionator. Each item keeps its lowest buyout per unit and the quantity on sale. Connected realms share their prices, which are kept 30 days after the item was last seen. The items your account holds or traded also keep one price a day for 30 days, which gives the change shown in their tooltip.
 
 The settings are in the game's options, under AddOns > Trading Book. A right-click on the minimap icon or on the addon menu entry opens them, as does `/tradingbook settings`.
 
@@ -36,6 +38,7 @@ The settings are in the game's options, under AddOns > Trading Book. A right-cli
 | --- | --- |
 | **Minimap icon** | Shows or hides the icon, like `/tradingbook minimap`. |
 | **Item tooltips** | Adds the Trading Book section to item tooltips or not, like `/tradingbook tooltip`. |
+| **Scan the auction house** | Scans it when it opens, unless Auctionator already prices some of the account's items. `/tradingbook scan` still works when this is off. |
 | **Custom window scale** | Gives the window a scale of its own, which replaces the game's UI scale: the window then keeps its size when the game's scale changes. Turned on, it starts from the game's current scale, so nothing moves yet. Turned off, the window follows the game's scale again. |
 | **Window scale** | That scale, from 50% to 120% in steps of 5%, in the same percent as the game's UI scale. Greyed out while the window follows the game. The window stays centred on the same spot when it changes. |
 
@@ -50,7 +53,7 @@ The data covers the whole account. The menu at the top right narrows the display
 
 A gold change only counts what changed since Trading Book started following the holder: a character's first login is not a gain, and moving gold to the shared stock does not change the total. "Outside auctions" is the difference between the gold change and the auction result, so a sale not yet collected from the mail can temporarily shift that split.
 
-Stock value comes from Auctionator if it is installed, otherwise from the average of your sales over 90 days. An item with no known price counts as zero.
+Stock value comes from Auctionator if it has a price, otherwise from Trading Book's auction house scan, otherwise from the average of your sales over 90 days. An item with no known price counts as zero.
 
 ## Languages
 
@@ -67,6 +70,7 @@ English strings are the keys and the fallback, and every other language has its 
 | Sale, purchase, expiry | Auction house mail and its invoice | When the mail is collected |
 | Active auctions | `GetOwnedAuctions` | When the auction house opens |
 | Stock | Bags, bank, Warband bank, mail | On every change; banks only while open |
+| Auction house prices | `ReplicateItems`, read back with `GetReplicateItemInfo` | When the auction house opens, at most every 15 minutes, or on `/tradingbook scan` |
 
 Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + cancellation costs. This follows the money actually received and spent: the deposit paid when listing comes back with the sale's payment.
 
@@ -75,7 +79,8 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 - A sale only appears once its mail is collected. It is still dated from the mail's remaining time, so the per-day statistics stay correct.
 - The bank and the Warband bank show their content as of your last visit.
 - Stock in the mail only sees the first 50 messages loaded by the client.
-- Items are grouped by ID: variants of one item (item level) and caged pets are merged.
+- Items are grouped by ID: variants of one item (item level) and caged pets are merged. The auction house price of an item is that of its cheapest variant, and caged pets get none.
+- An auction house price is the lowest buyout of the latest scan, so a single cheap auction is enough to lower it.
 - After an interrupted multi-post, the listed quantity stays the one first requested.
 - The cost of crafting an item is not known: profit only counts auction house purchases.
 - The icon follows a circle around the minimap: on a square minimap (ElvUI, for example), it does not reach the corners.
@@ -93,7 +98,8 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 7. **Warband bank**: its content and gold appear when the bank opens.
 8. **Full mailbox**: a collection that fails on full bags, then succeeds, only counts once.
 9. **Item tooltips**: the section appears on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's window nor on the comparison tooltips, and hovering an item in combat raises no error.
-10. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
+10. **Auction house scan**: the request is answered by `REPLICATE_ITEM_LIST_UPDATE`, indexes start at 0, the buyout covers the whole stack, the game does not freeze or disconnect while it is read, a request within 15 minutes is refused without harm, and the prices match those of the auction house.
+11. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
 
@@ -136,6 +142,7 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Stockpile.lua` | Stock and its history |
 | `Gold.lua` | Gold history per holder and its analysis |
 | `Stats.lua` | Statistics and price estimates |
+| `Market.lua` | Auction house scan and the prices it keeps |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
 | `UI/` | Window, tables, tabs and item tooltips |
 | `tests/` | Fake client and tests |

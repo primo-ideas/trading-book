@@ -878,13 +878,40 @@ test("day buckets hold on every day of the year, including clock changes", funct
     end
 end)
 
-test("item value prefers Auctionator, then the player's recent sales", function()
+-- Auction house scan helpers -----------------------------------------------------
+
+-- Opens the auction house and lets the automatic scan, if any, be requested.
+local function openAuctionHouse()
+    Mock.Fire("AUCTION_HOUSE_SHOW")
+    Mock.RunTimers()
+end
+
+-- The server's answer to a scan, read to the end.
+local function answerScan(auctions)
+    Mock.SetReplicate(auctions)
+    Mock.Fire("REPLICATE_ITEM_LIST_UPDATE")
+    Mock.RunTimers()
+end
+
+local function auction(itemID, count, buyout, saleStatus)
+    return { itemID = itemID, count = count, buyout = buyout, saleStatus = saleStatus }
+end
+
+test("item value prefers Auctionator, then the auction house scan, then recent sales", function()
     local ns, world = Mock.Boot()
     ns.Ledger.Add({ kind = "sold", itemID = 1001, qty = 10, gross = 1000 })
     local price, source = ns.Stats.GetUnitPrice(1001)
     eq(price, 100)
     eq(source, "sales")
     eq(ns.Stats.GetUnitPrice(9999), nil, "unknown item")
+
+    openAuctionHouse()
+    answerScan({ auction(1001, 2, 600) })
+    local seenAt
+    price, source, seenAt = ns.Stats.GetUnitPrice(1001)
+    eq(price, 300)
+    eq(source, "scan")
+    eq(seenAt, world.now)
 
     rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function(caller, id)
         eq(caller, "TradingBook")
@@ -2113,6 +2140,250 @@ test("/tradingbook tooltip hides the lines for good, and brings them back", func
     eq(#world.printed, 1, "says so")
 end)
 
+-- Auction house scan ----------------------------------------------------------
+
+test("opening the auction house scans it without Auctionator, at the lowest price per unit", function()
+    local ns, world = Mock.Boot()
+    Mock.Fire("AUCTION_HOUSE_SHOW")
+    eq(world.replicateRequests, 0, "not before the auction house has settled")
+    Mock.RunTimers()
+    eq(world.replicateRequests, 1)
+    answerScan({
+        auction(1001, 10, 1000), auction(1001, 5, 400), auction(1001, 1, 150),
+        auction(1002, 1, 0), -- Bids only.
+        auction(1003, 2, 500, 1), -- Already sold.
+        auction(82800, 1, 10), -- A caged pet.
+    })
+    local item = ns.Market.GetItem(1001)
+    eq(item.price, 80, "lowest buyout per unit")
+    eq(item.quantity, 16, "everything on sale")
+    eq(item.seenAt, world.now)
+    eq(ns.Market.GetItem(1002), nil, "no buyout, no price")
+    eq(ns.Market.GetItem(1003), nil, "sold auctions left out")
+    eq(ns.Market.GetItem(82800), nil, "caged pets left out")
+    eq(has(world.printed[#world.printed], "Auction house scanned: 1 items priced."), true, world.printed[#world.printed])
+end)
+
+test("a large auction house is read a few thousand auctions a frame", function()
+    local ns, world = Mock.Boot()
+    openAuctionHouse()
+    local auctions = {}
+    for i = 1, 5000 do
+        auctions[i] = auction(2000 + i % 50, 1, 100 + i)
+    end
+    Mock.SetReplicate(auctions)
+    Mock.Fire("REPLICATE_ITEM_LIST_UPDATE")
+    eq(world.replicateReads < 5000, true, "not all in one frame")
+    eq(ns.Market.GetItem(2001), nil, "nothing saved before the end")
+    Mock.RunTimers()
+    eq(world.replicateReads, 5000, "each auction read once")
+    eq(ns.Market.GetItem(2001).price, 101)
+    eq(ns.Market.GetItem(2001).quantity, 100)
+end)
+
+test("scans keep the game's 15 minutes apart, and a scan by hand says when it can run", function()
+    local _, world = Mock.Boot()
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 100) })
+    world.now = world.now + 10 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    eq(world.replicateRequests, 1, "too soon")
+    eq(has(world.printed[#world.printed], "scanned again in 5 min"), true, world.printed[#world.printed])
+
+    Mock.Fire("AUCTION_HOUSE_CLOSED")
+    local printed = #world.printed
+    openAuctionHouse()
+    eq(world.replicateRequests, 1, "not on reopening either")
+    eq(#world.printed, printed, "an automatic scan says nothing when it cannot run")
+
+    world.now = world.now + 5 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    eq(world.replicateRequests, 2, "allowed again")
+    eq(has(world.printed[#world.printed], "Scanning the auction house..."), true)
+end)
+
+test("a scan by hand needs the auction house open", function()
+    local _, world = Mock.Boot()
+    SlashCmdList.TRADINGBOOK("scan")
+    eq(world.replicateRequests, 0)
+    eq(has(world.printed[1], "Open the auction house to scan it."), true, world.printed[1])
+end)
+
+test("Auctionator with prices makes the automatic scan unnecessary, but not without data", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    local price = 500
+    rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function() return price end } } })
+    openAuctionHouse()
+    local withPrices = world.replicateRequests
+    Mock.Fire("AUCTION_HOUSE_CLOSED")
+    price = nil
+    openAuctionHouse()
+    rawset(_G, "Auctionator", nil)
+    eq(withPrices, 0, "Auctionator has prices")
+    eq(world.replicateRequests, 1, "Auctionator without data")
+end)
+
+test("the setting turns the automatic scan off, while the command still scans", function()
+    local _, world = Mock.Boot()
+    Mock.SettingsControl("Scan the auction house").setting:SetValue(false)
+    openAuctionHouse()
+    eq(world.replicateRequests, 0)
+    SlashCmdList.TRADINGBOOK("scan")
+    eq(world.replicateRequests, 1)
+
+    Mock.Boot({ db = TradingBookDB })
+    eq(Mock.SettingsControl("Scan the auction house").setting:GetValue(), false, "kept across a reload")
+end)
+
+test("closing the auction house drops a scan in progress and keeps the previous prices", function()
+    local ns, world = Mock.Boot()
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 100) })
+    local firstScan = world.now
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    local auctions = {}
+    for i = 1, 5000 do
+        auctions[i] = auction(1001, 1, 50)
+    end
+    Mock.SetReplicate(auctions)
+    Mock.Fire("REPLICATE_ITEM_LIST_UPDATE")
+    Mock.Fire("AUCTION_HOUSE_CLOSED")
+    Mock.RunTimers()
+    eq(ns.Market.GetItem(1001).price, 100, "previous price kept")
+    eq(ns.Market.GetItem(1001).seenAt, firstScan)
+    eq(has(world.printed[#world.printed], "scan stopped"), true, world.printed[#world.printed])
+end)
+
+test("a request the server never answers does not block the next one", function()
+    local _, world = Mock.Boot()
+    openAuctionHouse()
+    eq(world.replicateRequests, 1)
+    world.now = world.now + 16 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    eq(world.replicateRequests, 2)
+end)
+
+test("items gone from the auction house keep their last price for a month, with none on sale", function()
+    local ns, world = Mock.Boot()
+    openAuctionHouse()
+    answerScan({ auction(1001, 3, 300), auction(1002, 1, 70) })
+    local firstScan = world.now
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(1002, 2, 120) })
+    local gone = ns.Market.GetItem(1001)
+    eq(gone.price, 100, "last price kept")
+    eq(gone.quantity, 0, "none on sale now")
+    eq(gone.seenAt, firstScan)
+    eq(ns.Market.GetItem(1002).price, 60, "replaced by the new scan")
+
+    world.now = world.now + 31 * 86400
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(1002, 1, 80) })
+    eq(ns.Market.GetItem(1001), nil, "dropped after 30 days")
+    eq(ns.Market.GetItem(1002).price, 80)
+end)
+
+test("the account's items keep a price a day, for the change since a week ago", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 100), auction(1002, 1, 100) })
+    local firstDay = world.now
+    eq(ns.Market.GetChange(1001), nil, "no price a week old yet")
+    for day = 1, 8 do
+        world.now = firstDay + day * 86400
+        SlashCmdList.TRADINGBOOK("scan")
+        answerScan({ auction(1001, 1, 100 + day * 5), auction(1002, 1, 200) })
+    end
+    local change, since = ns.Market.GetChange(1001)
+    near(change, 35 / 105, 0.0001, "against the latest price at least 7 days old")
+    eq(ns.DayKey(since), ns.DayKey(firstDay + 86400))
+    eq(ns.Market.GetChange(1002), nil, "items the account never dealt in keep no history")
+
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(1002, 1, 200) })
+    eq(ns.Market.GetChange(1001), nil, "not on sale any more")
+
+    world.now = firstDay + 40 * 86400
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(1001, 1, 100) })
+    local days = 0
+    for _ in pairs(TradingBookDB.market.realms.Hyjal.history[1001]) do
+        days = days + 1
+    end
+    eq(days, 1, "only the last 30 days are kept")
+end)
+
+test("connected realms share their prices", function()
+    Mock.Boot({ connectedRealms = { "Elune" } })
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 100) })
+    local ns = Mock.Boot({ db = TradingBookDB, realm = "Elune", connectedRealms = { "Hyjal" } })
+    eq(ns.Market.GetItem(1001) and ns.Market.GetItem(1001).price, 100, "another realm of the group")
+    ns = Mock.Boot({ db = TradingBookDB, realm = "Ysondre" })
+    eq(ns.Market.GetItem(1001), nil, "a realm outside the group")
+end)
+
+test("without Auctionator, item tooltips give the auction house price, its age and what is on sale", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(4242, "Gem", 1, 1)
+    openAuctionHouse()
+    answerScan({ auction(4242, 4, 1000), auction(4242, 2, 600) })
+    world.now = world.now + 8 * 86400
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(4242, 1, 300) })
+    world.now = world.now + 2 * 3600
+    local text = hoverItem(4242)
+    eq(has(text, "Trading Book"), true, "even for an item neither held nor sold: " .. text)
+    eq(has(text, "AH price (2 h ago)=300c"), true, "price and age")
+    eq(has(text, "On the AH=1"), true, "quantity on sale")
+    eq(has(text, "Change since 11/05=+20.0%"), true, "change since a week ago")
+    eq(has(text, "Stock value"), false, "nothing held")
+
+    rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function() return 999 end } } })
+    text = hoverItem(4242)
+    rawset(_G, "Auctionator", nil)
+    eq(text, "", "Auctionator shows its own price")
+end)
+
+test("item tooltips and the stock tab value the account's stock at the scanned price", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    Mock.SetBagItem(0, 1, 1001, "Herb", 10)
+    Mock.Fire("BANKFRAME_OPENED")
+    Mock.RunTimers()
+    Mock.Fire("BANKFRAME_CLOSED")
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 30) })
+    eq(has(hoverItem(1001), "Stock value=300c"), true, "in the item's tooltip")
+
+    ns.UI.Open("stock")
+    eq(tables[1].rows[1].value, 300, "in the stock tab")
+    local row = tables[1].ScrollBox.rendered[1]
+    GameTooltip.lines = {}
+    row.scripts.OnEnter(row)
+    local lines = table.concat(GameTooltip.lines, ";")
+    eq(has(lines, "Source: auction house scan of 11/05 12:00"), true, lines)
+end)
+
+test("a finished scan refreshes the open window", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    Mock.SetBagItem(0, 1, 1001, "Herb", 10)
+    Mock.Fire("BANKFRAME_OPENED")
+    Mock.RunTimers()
+    Mock.Fire("BANKFRAME_CLOSED")
+    ns.UI.Open("stock")
+    eq(tables[1].rows[1].value, nil, "no price yet")
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 30) })
+    eq(tables[1].rows[1].value, 300)
+end)
+
 -- Settings ---------------------------------------------------------------------
 
 local function scaleControls()
@@ -2137,7 +2408,7 @@ test("the add-on has a page in the game's options, with every setting", function
         eq(control.tooltip ~= nil, true, "explained: " .. control.setting:GetName())
     end
     eq(table.concat(names, ", "), "checkbox:Minimap icon, checkbox:Item tooltips, "
-        .. "checkbox:Custom window scale, slider:Window scale")
+        .. "checkbox:Scan the auction house, checkbox:Custom window scale, slider:Window scale")
 
     local custom, slider = scaleControls()
     eq(slider.parent, custom, "the slider depends on the checkbox")

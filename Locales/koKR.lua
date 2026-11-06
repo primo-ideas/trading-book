@@ -81,7 +81,7 @@ ns.Translation = {
     ["Net profit = sales - purchases - fees"] = "순이익 = 판매 - 구매 - 수수료",
     ["Fees = cut + unrefunded deposits + cancellation costs"] = "수수료 = 경매장 수수료 + 환불되지 않은 보증금 + 취소 비용",
     ["Share of listed quantity that sold, among auctions that ended"] = "종료된 경매 중 판매된 수량의 비율",
-    ["Priced with Auctionator, or your recent sales when it has no price"] = "Auctionator 가격으로 추정하며, 가격이 없으면 최근 판매 기록을 사용합니다",
+    ["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] = "Auctionator 또는 경매장 검색으로 평가하며, 둘 다 가격이 없으면 최근 판매가를 사용합니다",
     ["Net result per day"] = "일별 순손익",
     ["Net result per %d days"] = "%d일별 순손익",
     ["Net result"] = "순손익",
@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d일",
     ["%d h"] = "%d시간",
     ["%d min"] = "%d분",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "왼쪽 클릭: 열기 또는 닫기",
@@ -141,4 +141,17 @@ ns.Translation = {
     ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "게임의 UI 크기 비율 대신 창에 별도의 비율을 사용합니다. 게임의 비율이 바뀌어도 창의 크기는 유지됩니다.",
     ["Window scale"] = "창 크기 비율",
     ["The window's size, in percent like the game's UI scale."] = "창의 크기를 게임의 UI 크기 비율처럼 퍼센트로 나타냅니다.",
+
+    -- Auction house scan
+    ["Scan the auction house"] = "경매장 검색",
+    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "경매장을 열 때 검색합니다. 게임이 허용하는 대로 최대 15분마다 한 번이며, Auctionator에 이미 가격이 있으면 하지 않습니다. /tradingbook scan으로 직접 검색할 수 있습니다.",
+    ["Scanning the auction house..."] = "경매장을 검색하는 중...",
+    ["Auction house scanned: %s items priced."] = "경매장 검색 완료: 아이템 %s개의 가격을 확인했습니다.",
+    ["Open the auction house to scan it."] = "검색하려면 경매장을 여세요.",
+    ["The auction house can be scanned again in %s."] = "%s 후에 경매장을 다시 검색할 수 있습니다.",
+    ["The auction house scan stopped as the auction house closed."] = "경매장을 닫아 검색이 중단되었습니다.",
+    ["AH price (%s ago)"] = "경매장 가격 (%s 전)",
+    ["On the AH"] = "경매장 등록 수량",
+    ["Change since %s"] = "%s 이후 변화",
+    ["Source: auction house scan of %s"] = "출처: %s 경매장 검색",
 }

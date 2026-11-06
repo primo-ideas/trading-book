@@ -68,6 +68,7 @@ local function InitDB()
     db.stockHistory = db.stockHistory or {}
     db.goldHistory = nil -- An account total from the first version, replaced by per-holder histories.
     db.ui = db.ui or {}
+    db.market = db.market or { realms = {} }
     ns.db = db
 end
 
@@ -243,6 +244,8 @@ SlashCmdList.TRADINGBOOK = function(message)
         ns.UI.Toggle()
     elseif command == "auctions" or command == "stock" or command == "stats" or command == "gold" then
         ns.UI.Open(command)
+    elseif command == "scan" then
+        ns.Market.Scan(true)
     elseif command == "settings" then
         ns.UI.OpenSettings()
     elseif command == "minimap" then
@@ -250,7 +253,7 @@ SlashCmdList.TRADINGBOOK = function(message)
     elseif command == "tooltip" then
         ns.UI.ToggleItemTooltip()
     else
-        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"])
+        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"])
     end
 end
 

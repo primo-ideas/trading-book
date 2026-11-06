@@ -47,6 +47,7 @@ Auctions.lua
 Mail.lua
 Stockpile.lua
 Stats.lua
+Market.lua
 Gold.lua
 UI\Widgets.lua
 UI\Charts.lua
