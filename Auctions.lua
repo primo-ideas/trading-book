@@ -1,4 +1,5 @@
 local _, ns = ...
+local L = ns.L
 
 -- Tracks listings and cancellations as they happen, and keeps a per-character
 -- copy of owned auctions so they can be shown away from the auction house.
@@ -242,3 +243,40 @@ function Auctions.GetAll(characterKey)
     end
     return rows
 end
+
+-- Undercuts ---------------------------------------------------------------------
+
+-- The account's auctions on sale on this realm's auction house that the latest scan
+-- found a cheaper offer for, as { [auction] = lowest unit price }. The account's own
+-- auctions do not undercut each other: an item is undercut when the lowest price on
+-- sale is below the account's own lowest.
+function Auctions.GetUndercut()
+    local onSale = {}
+    local ownLowest = {}
+    for _, row in ipairs(Auctions.GetAll()) do
+        local auction = row.auction
+        if not auction.sold and auction.itemID and auction.unit and ns.Market.SharesAuctionHouse(row.char) then
+            table.insert(onSale, auction)
+            ownLowest[auction.itemID] = math.min(ownLowest[auction.itemID] or math.huge, auction.unit)
+        end
+    end
+    local undercut = {}
+    for _, auction in ipairs(onSale) do
+        local market = ns.Market.GetItem(auction.itemID)
+        if market and market.quantity > 0 and market.price < ownLowest[auction.itemID] then
+            undercut[auction] = market.price
+        end
+    end
+    return undercut
+end
+
+ns.Subscribe("MARKET_CHANGED", function()
+    local count = 0
+    for _ in pairs(Auctions.GetUndercut()) do
+        count = count + 1
+    end
+    if count > 0 then
+        ns.Print(L["Undercut auctions: %s. The Active list of the Auctions tab marks them."]:format(
+            BreakUpLargeNumbers(count)))
+    end
+end)

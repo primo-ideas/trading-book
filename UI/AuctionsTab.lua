@@ -49,14 +49,22 @@ local function HistoryRow(entry)
 end
 
 -- Live auctions sort on the same column as history, with the end time as "when".
-local function ActiveRow(auction, characterKey)
+-- lowest: the cheaper unit price on sale when the auction is undercut.
+local function ActiveRow(auction, characterKey, lowest)
     local remaining = auction.expiresAt and (auction.expiresAt - time())
+    local kindText, kindColor = L["On sale"], Colors.category1
+    if auction.sold then
+        kindText, kindColor = L["Sold, mail pending"], Colors.category3
+    elseif lowest then
+        kindText, kindColor = L["Undercut"], Colors.loss
+    end
     return {
         auction = auction,
+        lowest = lowest,
         when = auction.expiresAt,
         whenText = remaining and ns.FormatDuration(remaining) or "-",
-        kindText = auction.sold and L["Sold, mail pending"] or L["On sale"],
-        kindColor = auction.sold and Colors.category3 or Colors.category1,
+        kindText = kindText,
+        kindColor = kindColor,
         itemID = auction.itemID,
         link = auction.link,
         name = auction.name,
@@ -72,8 +80,9 @@ local function BuildRows()
     local characterFilter = UI.GetCharacterFilter()
     local rows = {}
     if filter == "active" then
+        local undercut = ns.Auctions.GetUndercut()
         for _, item in ipairs(ns.Auctions.GetAll(characterFilter)) do
-            local row = ActiveRow(item.auction, item.char)
+            local row = ActiveRow(item.auction, item.char, undercut[item.auction])
             if UI.MatchesSearch(row.name, search) then
                 rows[#rows + 1] = row
             end
@@ -114,6 +123,10 @@ local function ShowRowTooltip(owner, row)
     elseif row.auction then
         local character = ns.db.characters[row.char]
         GameTooltip:AddDoubleLine(L["Last synced"], ns.FormatDate(character and character.auctionsSyncedAt), 0.8, 0.8, 0.8, 1, 1, 1)
+        if row.lowest then
+            UI.AddMoneyLine(L["Lowest on the AH"], row.lowest)
+            GameTooltip:AddDoubleLine(L["AH scan"], ns.FormatDate(ns.Market.GetScannedAt()), 0.8, 0.8, 0.8, 1, 1, 1)
+        end
     end
     GameTooltip:Show()
 end

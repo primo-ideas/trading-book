@@ -1,4 +1,5 @@
 local _, ns = ...
+local L = ns.L
 
 -- Sales, purchases and expiries are read from auction house mail: its invoices
 -- carry the exact prices, and each mail can only be collected once, which makes
@@ -16,6 +17,8 @@ local MAX_ATTACHMENTS = 16 -- ATTACHMENTS_MAX_RECEIVE lives in the mail UI addon
 local inbox = {}
 local inboxSize = nil
 local lastTake = nil
+-- Ledger entries recorded since the mailbox opened, summed up when it closes.
+local collected = {}
 
 -- Turns a global string such as "Auction successful: %s" into a pattern.
 local function SubjectPattern(format)
@@ -201,6 +204,7 @@ local function OnTake(index)
     if record then
         mail.taken = true
         lastTake = { index = index, mail = mail, entry = record(mail), at = time() }
+        table.insert(collected, lastTake.entry)
     end
 end
 
@@ -212,6 +216,11 @@ hooksecurefunc("AutoLootMailItem", OnTake)
 ns.OnEvent("MAIL_FAILED", function()
     if lastTake and time() - lastTake.at <= UNDO_WINDOW_SECONDS then
         ns.Ledger.Remove(lastTake.entry)
+        for i = #collected, 1, -1 do
+            if collected[i] == lastTake.entry then
+                table.remove(collected, i)
+            end
+        end
         lastTake.mail.taken = nil
         local current = inbox[lastTake.index]
         if current then
@@ -228,7 +237,50 @@ end)
 ns.OnEvent("MAIL_SHOW", ScanInbox)
 ns.OnEvent("MAIL_INBOX_UPDATE", ScanInbox)
 
+-- Summary ---------------------------------------------------------------------------
+
+function Mail.IsSummaryEnabled()
+    return not ns.db.ui.noMailSummary
+end
+
+function Mail.SetSummaryEnabled(enabled)
+    ns.db.ui.noMailSummary = not enabled or nil
+end
+
+-- One line in the chat for what the visit to the mailbox brought in.
+local function PrintSummary(entries)
+    local sales, received, purchases, paid, expiries = 0, 0, 0, 0, 0
+    for _, entry in ipairs(entries) do
+        if entry.kind == "sold" then
+            sales = sales + 1
+            received = received + ns.Stats.Net(entry)
+        elseif entry.kind == "bought" then
+            purchases = purchases + 1
+            paid = paid + (entry.gross or 0)
+        elseif entry.kind == "expired" then
+            expiries = expiries + 1
+        end
+    end
+    local parts = {}
+    if sales > 0 then
+        table.insert(parts, L["%s sales, %s received"]:format(BreakUpLargeNumbers(sales), ns.FormatMoney(received)))
+    end
+    if purchases > 0 then
+        table.insert(parts, L["%s purchases, %s paid"]:format(BreakUpLargeNumbers(purchases), ns.FormatMoney(paid)))
+    end
+    if expiries > 0 then
+        table.insert(parts, L["%s expired"]:format(BreakUpLargeNumbers(expiries)))
+    end
+    if #parts > 0 then
+        ns.Print(L["Collected from the mail: %s."]:format(table.concat(parts, "; ")))
+    end
+end
+
 ns.OnEvent("MAIL_CLOSED", function()
+    if Mail.IsSummaryEnabled() then
+        PrintSummary(collected)
+    end
+    collected = {}
     inbox = {}
     inboxSize = nil
     lastTake = nil

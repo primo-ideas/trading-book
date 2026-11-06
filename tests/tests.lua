@@ -2384,6 +2384,156 @@ test("a finished scan refreshes the open window", function()
     eq(tables[1].rows[1].value, 300)
 end)
 
+-- Undercuts -----------------------------------------------------------------------
+
+local function liveAuction(world, auctionID, itemID, unit, options)
+    options = options or {}
+    return {
+        auctionID = auctionID, itemID = itemID, name = "Item " .. itemID, qty = options.qty or 1,
+        unit = unit, sold = options.sold, expiresAt = world.now + 3600,
+    }
+end
+
+local function setAuctions(ns, characterKey, auctions)
+    ns.GetCharacter(characterKey).auctions = auctions
+end
+
+test("after a scan, auctions beaten by a cheaper offer are undercut, and the chat counts them", function()
+    local ns, world = Mock.Boot()
+    local beaten = liveAuction(world, 1, 1001, 100)
+    local cheapest = liveAuction(world, 2, 1002, 50, { qty = 5 })
+    local sold = liveAuction(world, 3, 1003, 10, { sold = true })
+    setAuctions(ns, nil, { beaten, cheapest, sold })
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90), auction(1001, 1, 100), auction(1002, 5, 250), auction(1003, 1, 5) })
+    local undercut = ns.Auctions.GetUndercut()
+    eq(undercut[beaten], 90, "a cheaper offer")
+    eq(undercut[cheapest], nil, "still the cheapest")
+    eq(undercut[sold], nil, "already sold")
+    eq(has(world.printed[#world.printed], "Undercut auctions: 1."), true, world.printed[#world.printed])
+end)
+
+test("the account's auctions do not undercut each other, on its own auction house only", function()
+    local ns, world = Mock.Boot({ connectedRealms = { "Elune" } })
+    local mine = liveAuction(world, 1, 1001, 100)
+    local alt = liveAuction(world, 2, 1001, 90)
+    local elsewhere = liveAuction(world, 3, 1001, 50)
+    setAuctions(ns, nil, { mine })
+    setAuctions(ns, "Alt-Elune", { alt })
+    setAuctions(ns, "Far-Ysondre", { elsewhere })
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90), auction(1001, 1, 95), auction(1001, 1, 100) })
+    eq(next(ns.Auctions.GetUndercut()), nil, "the cheapest offer is the account's own")
+
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(1001, 1, 85), auction(1001, 1, 90), auction(1001, 1, 100) })
+    local undercut = ns.Auctions.GetUndercut()
+    eq(undercut[mine], 85, "a stranger sells for less")
+    eq(undercut[alt], 85, "an alt on a connected realm too")
+    eq(undercut[elsewhere], nil, "another auction house")
+end)
+
+test("items no longer on sale, or never scanned, are not undercut", function()
+    local ns, world = Mock.Boot()
+    local gone = liveAuction(world, 1, 1001, 100)
+    local unknown = liveAuction(world, 2, 4242, 100)
+    setAuctions(ns, nil, { gone, unknown })
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 50) })
+    eq(ns.Auctions.GetUndercut()[gone], 50)
+
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    answerScan({ auction(1002, 1, 50) })
+    local undercut = ns.Auctions.GetUndercut()
+    eq(undercut[gone], nil, "no longer on sale")
+    eq(undercut[unknown], nil, "never scanned")
+    eq(has(world.printed[#world.printed], "Undercut"), false, "nothing to say: " .. world.printed[#world.printed])
+end)
+
+test("the Active list marks undercut auctions, with the cheaper price in their tooltip", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    local segments = captureSegments(ns)
+    setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100), liveAuction(world, 2, 1002, 50) })
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90), auction(1002, 1, 50) })
+    ns.UI.Open("auctions")
+    segments[1]("active")
+
+    local byItem = {}
+    for _, row in ipairs(tables[1].rows) do
+        byItem[row.itemID] = row
+    end
+    eq(byItem[1001].kindText, "Undercut")
+    eq(byItem[1002].kindText, "On sale")
+    for _, row in ipairs(tables[1].ScrollBox.rendered) do
+        if row.data == byItem[1001] then
+            GameTooltip.lines = {}
+            row.scripts.OnEnter(row)
+        end
+    end
+    local lines = table.concat(GameTooltip.lines, ";")
+    eq(has(lines, "Lowest on the AH=90c"), true, lines)
+    eq(has(lines, "AH scan=11/05 12:00"), true, lines)
+end)
+
+-- Mail summary ------------------------------------------------------------------
+
+test("leaving the mailbox sums up what was collected", function()
+    local _, world = Mock.Boot()
+    world.mails = {
+        soldMail("Herb", 1000, { cut = 50, deposit = 20 }),
+        soldMail("Ore", 500, { cut = 25 }),
+        { subject = "Auction won: Gem", items = { { name = "Gem", id = 1003, count = 1 } },
+            invoice = { type = "buyer", name = "Gem", bid = 300, buyout = 300, deposit = 0, consignment = 0, count = 1 } },
+        { subject = "Auction expired: Herb", items = { { name = "Herb", id = 1001, count = 5 } } },
+        { subject = "Auction expired: Ore", items = { { name = "Ore", id = 1002, count = 2 } } },
+    }
+    Mock.Fire("MAIL_SHOW")
+    for _ = 1, 5 do
+        AutoLootMailItem(1)
+        Mock.CompleteTake()
+    end
+    eq(#world.printed, 0, "nothing said while collecting")
+    Mock.Fire("MAIL_CLOSED")
+    eq(#world.printed, 1)
+    eq(has(world.printed[1], "Collected from the mail: 2 sales, 1445c received; 1 purchases, 300c paid; 2 expired."),
+        true, world.printed[1])
+
+    Mock.Fire("MAIL_SHOW")
+    Mock.Fire("MAIL_CLOSED")
+    eq(#world.printed, 1, "nothing collected, nothing said")
+end)
+
+test("the summary leaves out a take that failed, and only says what there is", function()
+    local _, world = Mock.Boot()
+    world.mails = {
+        { subject = "Auction expired: Herb", items = { { name = "Herb", id = 1001, count = 20 } } },
+        soldMail("Ore", 100),
+    }
+    Mock.Fire("MAIL_SHOW")
+    AutoLootMailItem(1)
+    Mock.FailTake()
+    TakeInboxMoney(2)
+    Mock.CompleteTake()
+    Mock.Fire("MAIL_CLOSED")
+    eq(has(world.printed[1], "Collected from the mail: 1 sales, 100c received."), true, world.printed[1])
+end)
+
+test("the mail summary can be turned off in the settings", function()
+    local _, world = Mock.Boot()
+    Mock.SettingsControl("Mail summary").setting:SetValue(false)
+    world.mails = { soldMail("Herb", 100) }
+    Mock.Fire("MAIL_SHOW")
+    TakeInboxMoney(1)
+    Mock.CompleteTake()
+    Mock.Fire("MAIL_CLOSED")
+    eq(#world.printed, 0)
+    eq(#TradingBookDB.ledger, 1, "the sale is still recorded")
+end)
+
 -- Settings ---------------------------------------------------------------------
 
 local function scaleControls()
@@ -2408,7 +2558,8 @@ test("the add-on has a page in the game's options, with every setting", function
         eq(control.tooltip ~= nil, true, "explained: " .. control.setting:GetName())
     end
     eq(table.concat(names, ", "), "checkbox:Minimap icon, checkbox:Item tooltips, "
-        .. "checkbox:Scan the auction house, checkbox:Custom window scale, slider:Window scale")
+        .. "checkbox:Scan the auction house, checkbox:Mail summary, checkbox:Custom window scale, "
+        .. "slider:Window scale")
 
     local custom, slider = scaleControls()
     eq(slider.parent, custom, "the slider depends on the checkbox")

@@ -154,4 +154,16 @@ ns.Translation = {
     ["On the AH"] = "En vente à l'HdV",
     ["Change since %s"] = "Évolution depuis le %s",
     ["Source: auction house scan of %s"] = "Source : scan de l'hôtel des ventes du %s",
+
+    -- Undercuts and mail summary
+    ["Undercut auctions: %s. The Active list of the Auctions tab marks them."] = "Enchères sous-cotées : %s. La liste « En cours » de l'onglet « Enchères » les signale.",
+    ["Undercut"] = "Sous-cotée",
+    ["Lowest on the AH"] = "Moins cher à l'HdV",
+    ["AH scan"] = "Scan HdV",
+    ["Collected from the mail: %s."] = "Relevé du courrier : %s.",
+    ["%s sales, %s received"] = "%s ventes, %s reçus",
+    ["%s purchases, %s paid"] = "%s achats, %s payés",
+    ["%s expired"] = "%s expirées",
+    ["Mail summary"] = "Résumé du courrier",
+    ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "En quittant la boîte aux lettres, résume dans le chat les ventes, achats et expirations relevés.",
 }

@@ -154,4 +154,16 @@ ns.Translation = {
     ["On the AH"] = "拍賣場在售",
     ["Change since %s"] = "自 %s 以來的變化",
     ["Source: auction house scan of %s"] = "來源：%s 的拍賣場掃描",
+
+    -- Undercuts and mail summary
+    ["Undercut auctions: %s. The Active list of the Auctions tab marks them."] = "被壓價的拍賣：%s 件。拍賣分頁的「進行中」列表會標出它們。",
+    ["Undercut"] = "被壓價",
+    ["Lowest on the AH"] = "拍賣場最低價",
+    ["AH scan"] = "拍賣場掃描",
+    ["Collected from the mail: %s."] = "已從郵件領取：%s。",
+    ["%s sales, %s received"] = "售出 %s 筆，收入 %s",
+    ["%s purchases, %s paid"] = "購買 %s 筆，支出 %s",
+    ["%s expired"] = "過期 %s 筆",
+    ["Mail summary"] = "郵件摘要",
+    ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "離開郵箱時，在聊天框中彙整領取的售出、購買與過期。",
 }

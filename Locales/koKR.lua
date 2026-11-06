@@ -154,4 +154,16 @@ ns.Translation = {
     ["On the AH"] = "경매장 등록 수량",
     ["Change since %s"] = "%s 이후 변화",
     ["Source: auction house scan of %s"] = "출처: %s 경매장 검색",
+
+    -- Undercuts and mail summary
+    ["Undercut auctions: %s. The Active list of the Auctions tab marks them."] = "더 싼 경매가 있는 내 경매: %s개. 경매 탭의 '진행 중' 목록에 표시됩니다.",
+    ["Undercut"] = "최저가 아님",
+    ["Lowest on the AH"] = "경매장 최저가",
+    ["AH scan"] = "경매장 검색",
+    ["Collected from the mail: %s."] = "우편에서 받음: %s.",
+    ["%s sales, %s received"] = "판매 %s건, %s 받음",
+    ["%s purchases, %s paid"] = "구매 %s건, %s 지불",
+    ["%s expired"] = "만료 %s건",
+    ["Mail summary"] = "우편 요약",
+    ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "우편함을 떠날 때 받은 판매, 구매, 만료 내역을 대화창에 요약합니다.",
 }

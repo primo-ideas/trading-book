@@ -154,4 +154,16 @@ ns.Translation = {
     ["On the AH"] = "No leilão",
     ["Change since %s"] = "Variação desde %s",
     ["Source: auction house scan of %s"] = "Fonte: varredura da casa de leilões de %s",
+
+    -- Undercuts and mail summary
+    ["Undercut auctions: %s. The Active list of the Auctions tab marks them."] = "Leilões superados: %s. A lista “Ativos” da aba “Leilões” os marca.",
+    ["Undercut"] = "Superado",
+    ["Lowest on the AH"] = "Mais barato no leilão",
+    ["AH scan"] = "Varredura do leilão",
+    ["Collected from the mail: %s."] = "Recolhido do correio: %s.",
+    ["%s sales, %s received"] = "%s vendas, %s recebidos",
+    ["%s purchases, %s paid"] = "%s compras, %s pagos",
+    ["%s expired"] = "%s expirados",
+    ["Mail summary"] = "Resumo do correio",
+    ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Ao sair da caixa de correio, resume no chat as vendas, compras e expirações recolhidas.",
 }

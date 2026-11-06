@@ -50,6 +50,11 @@ local function RegisterSettings()
     Settings.CreateCheckbox(category, scan,
         L["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."])
 
+    local mailSummary = AddSetting("MailSummary", L["Mail summary"], Settings.VarType.Boolean, true,
+        ns.Mail.IsSummaryEnabled, ns.Mail.SetSummaryEnabled)
+    Settings.CreateCheckbox(category, mailSummary,
+        L["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."])
+
     -- A scale of its own starts from the game's, so that turning it on changes nothing yet.
     local ownScale = AddSetting("OwnScale", L["Custom window scale"], Settings.VarType.Boolean, false,
         function()
