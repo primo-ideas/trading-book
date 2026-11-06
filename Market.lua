@@ -257,7 +257,22 @@ function Market.SetAutoScanEnabled(enabled)
     ns.db.ui.noAutoScan = not enabled or nil
 end
 
+-- The answer to a scan reaches every addon, so one that another addon asked for,
+-- such as Auctionator's full scan, is read too: with Auctionator, Trading Book does
+-- not scan by itself, and undercuts and watched items would never be checked. The
+-- game allows one request every 15 minutes, so an answer within that time of the
+-- last request is that same answer again.
+local function AdoptOtherScan()
+    if state or not auctionHouseOpen or Market.NextScanAt() > time() then
+        return
+    end
+    ns.db.market.requestedAt = time()
+    state = "waiting"
+    scan = { requestedAt = time(), byHand = false }
+end
+
 ns.OnEvent("REPLICATE_ITEM_LIST_UPDATE", function()
+    AdoptOtherScan()
     if state ~= "waiting" then
         return
     end

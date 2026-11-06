@@ -39,6 +39,24 @@ function Watch.ParseMoney(text)
     return copper
 end
 
+-- Coins written in one word: 12g, 50s, 12g50s.
+local function IsCoins(word)
+    return (word:lower():gsub("%d+[gsc]", "")) == ""
+end
+
+-- Takes the price off the end of a command's words. It can be one word (12g50s,
+-- 12.5) or coins split by spaces (12g 50s 25c), as players often write it.
+local function TakePrice(words)
+    local coins = {}
+    while #words > 0 and IsCoins(words[#words]) do
+        table.insert(coins, 1, table.remove(words))
+    end
+    if #coins > 0 then
+        return Watch.ParseMoney(table.concat(coins))
+    end
+    return Watch.ParseMoney(table.remove(words))
+end
+
 -- The item a command names, from a shift-clicked link or an exact name, and what
 -- follows the link. Returns itemID, link, rest.
 local function ReadItem(text)
@@ -126,7 +144,7 @@ function Watch.Command(text)
     for word in rest:gmatch("%S+") do
         table.insert(words, word)
     end
-    local price = Watch.ParseMoney(table.remove(words))
+    local price = TakePrice(words)
     local direction = "below"
     local keyword = words[#words] and words[#words]:lower()
     if keyword == "below" or keyword == "above" then

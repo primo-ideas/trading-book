@@ -165,7 +165,8 @@ local function RecordPurchase(mail)
         name = invoice.itemName or mail.itemName or mail.subjectName,
         link = mail.link,
         qty = invoice.count or mail.subjectQty or math.max(1, mail.attachedQty),
-        gross = invoice.bid or 0,
+        -- Unknown without the invoice: the mail carries the item, not what it cost.
+        gross = invoice.bid,
         other = invoice.playerName,
     })
 end

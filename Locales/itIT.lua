@@ -184,4 +184,8 @@ ns.Translation = {
     ["Sell target"] = "Prezzo di vendita obiettivo",
     ["History as CSV"] = "Cronologia in CSV",
     ["The text is selected: copy it, then paste it into a spreadsheet."] = "Il testo è selezionato: copialo e incollalo in un foglio di calcolo.",
+    ["%s unpriced"] = "%s ignoti",
+    ["Purchases whose mail invoice could not be read have no price: they count as zero, and the corner shows how many"] = "Gli acquisti la cui fattura della posta non si è potuta leggere non hanno prezzo: contano come zero, e l'angolo mostra quanti sono",
+    ["unknown"] = "sconosciuto",
+    ["The mail's invoice could not be read."] = "Non è stato possibile leggere la fattura della posta.",
 }

@@ -10,7 +10,8 @@ local TILES = {
     { key = "net", label = L["Net profit"], icon = "Interface\\Icons\\INV_Misc_Coin_02",
         hint = L["Net profit = sales - purchases - fees"] },
     { key = "sales", label = L["Sales"], icon = "Interface\\Icons\\INV_Misc_CoinBag01" },
-    { key = "spent", label = L["Purchases"], icon = "Interface\\Icons\\INV_Crate_03" },
+    { key = "spent", label = L["Purchases"], icon = "Interface\\Icons\\INV_Crate_03",
+        hint = L["Purchases whose mail invoice could not be read have no price: they count as zero, and the corner shows how many"] },
     { key = "fees", label = L["Fees"], icon = "Interface\\Icons\\INV_Scroll_03",
         hint = L["Fees = cut + unrefunded deposits + cancellation costs"] },
     { key = "sellThrough", label = L["Sell-through"], icon = "Interface\\Icons\\Achievement_Reputation_08",
@@ -29,7 +30,7 @@ local function BuildItemRows(summary)
     for _, item in pairs(summary.items) do
         if item.soldQty > 0 or item.boughtQty > 0 then
             item.avgSale = item.soldQty > 0 and item.gross / item.soldQty or nil
-            item.avgPurchase = item.boughtQty > 0 and item.spent / item.boughtQty or nil
+            item.avgPurchase = item.pricedBoughtQty > 0 and item.spent / item.pricedBoughtQty or nil
             rows[#rows + 1] = item
         end
     end
@@ -44,6 +45,8 @@ local function Refresh()
     tiles.net:SetValue(ns.FormatSignedMoney(summary.net), UI.ColorForAmount(summary.net))
     tiles.sales:SetValue(ns.FormatMoney(summary.gross))
     tiles.spent:SetValue(ns.FormatMoney(summary.spent))
+    tiles.spent:SetNote(summary.unpricedPurchases > 0
+        and L["%s unpriced"]:format(BreakUpLargeNumbers(summary.unpricedPurchases)) or "")
     tiles.fees:SetValue(ns.FormatMoney(summary.fees))
     tiles.sellThrough:SetValue(summary.sellThrough and ("%d%%"):format(summary.sellThrough * 100 + 0.5) or "-")
     tiles.stockValue:SetValue(ns.FormatMoney(ns.Stockpile.GetValue(characterFilter)))

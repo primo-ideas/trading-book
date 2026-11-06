@@ -30,7 +30,7 @@ Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it b
 
 Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get a Trading Book section: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Without a price from Auctionator, which shows its own, the section also gives the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. Nothing is added for an item that has none of these, nor in Trading Book's own window, which already shows the same. `/tradingbook tooltip` hides the section or brings it back.
 
-When Auctionator is not installed, or has no prices, Trading Book scans the auction house itself when it opens: one request reads every auction of the realm, at most every 15 minutes, as the game allows. `/tradingbook scan` starts a scan by hand, even with Auctionator. Each item keeps its lowest buyout per unit and the quantity on sale. Connected realms share their prices, which are kept 30 days after the item was last seen. The items your account holds or traded also keep one price a day for 30 days, which gives the change shown in their tooltip.
+When Auctionator is not installed, or has no prices, Trading Book scans the auction house itself when it opens: one request reads every auction of the realm, at most every 15 minutes, as the game allows. `/tradingbook scan` starts a scan by hand, even with Auctionator. When another addon, such as Auctionator with its full scan, scans the whole auction house, Trading Book reads the same answer without asking again. Each item keeps its lowest buyout per unit and the quantity on sale. Connected realms share their prices, which are kept 30 days after the item was last seen. The items your account holds or traded also keep one price a day for 30 days, which gives the change shown in their tooltip.
 
 After each scan, your auctions on sale that a cheaper offer beats are undercut: the chat says how many, and the Active list of the Auctions tab marks them, with the cheaper price and the scan's date in their tooltip. Your characters' auctions on the same auction house do not undercut each other: an item is undercut when the lowest price on sale is below your own lowest.
 
@@ -75,7 +75,7 @@ English strings are the keys and the fallback, and every other language has its 
 | Sale, purchase, expiry | Auction house mail and its invoice | When the mail is collected |
 | Active auctions | `GetOwnedAuctions` | When the auction house opens |
 | Stock | Bags, bank, Warband bank, mail | On every change; banks only while open |
-| Auction house prices | `ReplicateItems`, read back with `GetReplicateItemInfo` | When the auction house opens, at most every 15 minutes, or on `/tradingbook scan` |
+| Auction house prices | `ReplicateItems`, read back with `GetReplicateItemInfo` | When the auction house opens, at most every 15 minutes, on `/tradingbook scan`, or when another addon scans the whole auction house |
 
 Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + cancellation costs. This follows the money actually received and spent: the deposit paid when listing comes back with the sale's payment.
 
@@ -87,6 +87,8 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 - Items are grouped by ID: variants of one item (item level) and caged pets are merged. The auction house price of an item is that of its cheapest variant, and caged pets get none.
 - An auction house price is the lowest buyout of the latest scan, so a single cheap auction is enough to lower it.
 - Undercuts come from the latest scan only: an offer listed since is not seen, and a piece of gear can look undercut by a cheaper variant of the same item.
+- With Auctionator, undercuts and watched items are only checked after a full scan of the auction house, Auctionator's or `/tradingbook scan`: the prices Auctionator gathers from searches are not used for them.
+- A purchase whose mail invoice cannot be read has no price: its row shows it as unknown, it counts as zero in the totals, and the Purchases tile of the Stats tab says how many there are.
 - After an interrupted multi-post, the listed quantity stays the one first requested.
 - The cost of crafting an item is not known: profit only counts auction house purchases.
 - The icon follows a circle around the minimap: on a square minimap (ElvUI, for example), it does not reach the corners.
@@ -98,13 +100,13 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 1. **Interface**: window and portrait, tabs, character menu, columns, scrolling, charts, minimap icon (appearance, dragging, position kept after relogging). The tests check the margins, but with an estimated text width.
 2. **Settings**: the page appears under AddOns, opens from a right-click on the icon and on the addon menu entry, greys out the scale slider while the custom scale is off, and "Defaults" brings back the game's scale. With a custom scale, the window keeps its size when the game's UI scale changes, stays where it was when its scale changes, and its menus and tooltips still line up with it.
 3. **Sale**: the cut and deposit shown match the mail's invoice. This is the most uncertain point: if the invoice cannot be read when collecting, the amount falls back to the mail's money and the cut to zero.
-4. **Purchase**: the price is filled in after collecting the mail.
+4. **Purchase**: the price is filled in after collecting the mail. If it is not, the purchase shows an unknown price and the Purchases tile counts it.
 5. **Listing**: a single row with the right deposit, including with Auctionator and in a multi-post.
 6. **Cancellation**: the cost is filled in.
 7. **Warband bank**: its content and gold appear when the bank opens.
 8. **Full mailbox**: a collection that fails on full bags, then succeeds, only counts once.
 9. **Item tooltips**: the section appears on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's window nor on the comparison tooltips, and hovering an item in combat raises no error.
-10. **Auction house scan**: the request is answered by `REPLICATE_ITEM_LIST_UPDATE`, indexes start at 0, the buyout covers the whole stack, the game does not freeze or disconnect while it is read, a request within 15 minutes is refused without harm, and the prices match those of the auction house. Undercut auctions are the ones the auction house shows beaten, which relies on the price of an owned commodity auction being per unit.
+10. **Auction house scan**: the request is answered by `REPLICATE_ITEM_LIST_UPDATE`, indexes start at 0, the buyout covers the whole stack, the game does not freeze or disconnect while it is read, a request within 15 minutes is refused without harm, and the prices match those of the auction house. An Auctionator full scan is read by Trading Book too, without a second request, and the game stays smooth while both addons read it. Undercut auctions are the ones the auction house shows beaten, which relies on the price of an owned commodity auction being per unit.
 11. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
