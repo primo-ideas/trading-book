@@ -117,11 +117,17 @@ ns.Translation = {
     ["%d d"] = "%d일",
     ["%d h"] = "%d시간",
     ["%d min"] = "%d분",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap]"] = "사용법: /tradingbook [auctions | stock | stats | gold | minimap]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "왼쪽 클릭: 열기 또는 닫기",
     ["Drag: move"] = "드래그: 이동",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: 이 아이콘 숨기기",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "미니맵 아이콘을 숨겼습니다. 다시 표시하려면 /tradingbook minimap을 입력하세요.",
+
+    -- Item tooltips
+    ["Avg. sale (90 days)"] = "평균 판매가 (90일)",
+    ["Last sale (%s)"] = "최근 판매 (%s)",
+    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "아이템 툴팁의 정보를 숨겼습니다. 다시 표시하려면 /tradingbook tooltip을 입력하세요.",
+    ["Item tooltip lines shown."] = "아이템 툴팁에 정보를 다시 표시합니다.",
 }
