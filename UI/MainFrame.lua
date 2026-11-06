@@ -69,6 +69,52 @@ local function SavePosition()
     ns.db.ui.position = { point = point, relativePoint = relativePoint, x = x, y = y }
 end
 
+-- Scale -----------------------------------------------------------------------
+
+-- The window follows the game's UI scale unless it has a scale of its own, which
+-- then replaces the game's: the window keeps its size when the game's scale changes.
+function UI.GetWindowScale()
+    return ns.db.ui.scale
+end
+
+function UI.GetGameScale()
+    return UIParent:GetEffectiveScale()
+end
+
+local function FrameScale()
+    local scale = ns.db.ui.scale
+    return scale and scale / UI.GetGameScale() or 1
+end
+
+-- Anchor offsets are in the window's own scale, so the window is anchored again to
+-- keep its centre on the same spot of the screen.
+local function ApplyScale()
+    if not frame then
+        return
+    end
+    local previous, scale = frame:GetScale(), FrameScale()
+    if math.abs(previous - scale) < 0.0001 then
+        return
+    end
+    local x, y = frame:GetCenter()
+    frame:SetScale(scale)
+    if x then
+        frame:ClearAllPoints()
+        frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x * previous / scale, y * previous / scale)
+        SavePosition()
+    end
+end
+
+-- scale: the window's scale on screen, as the game's UI scale counts it, or nil
+-- to follow the game's.
+function UI.SetWindowScale(scale)
+    ns.db.ui.scale = scale
+    ApplyScale()
+end
+
+ns.OnEvent("UI_SCALE_CHANGED", ApplyScale)
+ns.OnEvent("DISPLAY_SIZE_CHANGED", ApplyScale)
+
 local function RestorePosition()
     local position = ns.db.ui.position
     frame:ClearAllPoints()
@@ -115,6 +161,7 @@ end
 local function CreateMainFrame()
     frame = CreateFrame("Frame", "TradingBookMainFrame", UIParent, "ButtonFrameTemplate")
     frame:SetSize(WIDTH, HEIGHT)
+    frame:SetScale(FrameScale())
     frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
     frame:SetTitle("Trading Book")

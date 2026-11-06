@@ -1948,7 +1948,7 @@ test("the icon's tooltip explains it, but stays out of the way while dragging", 
     Mock.Boot()
     local button = TradingBookMinimapButton
     button.scripts.OnEnter(button)
-    eq(#GameTooltip.lines, 3, "hints")
+    eq(#GameTooltip.lines, 4, "hints")
     eq(GameTooltip.text, "Trading Book")
 
     button.scripts.OnDragStart(button)
@@ -2111,6 +2111,197 @@ test("/tradingbook tooltip hides the lines for good, and brings them back", func
     SlashCmdList.TRADINGBOOK("TOOLTIP")
     eq(has(hoverItem(1001), "Last sale"), true, "shown again")
     eq(#world.printed, 1, "says so")
+end)
+
+-- Settings ---------------------------------------------------------------------
+
+local function scaleControls()
+    return Mock.SettingsControl("Custom window scale"), Mock.SettingsControl("Window scale")
+end
+
+-- Where the window's centre is on the screen, whatever its scale.
+local function screenCenter(frame)
+    local x, y = frame:GetCenter()
+    local scale = frame:GetEffectiveScale()
+    return x * scale, y * scale
+end
+
+test("the add-on has a page in the game's options, with every setting", function()
+    Mock.Boot()
+    local page = Mock.SettingsPage()
+    eq(page ~= nil, true, "registered among the add-ons")
+    eq(page.name, "Trading Book")
+    local names = {}
+    for _, control in ipairs(page.controls) do
+        table.insert(names, control.kind .. ":" .. control.setting:GetName())
+        eq(control.tooltip ~= nil, true, "explained: " .. control.setting:GetName())
+    end
+    eq(table.concat(names, ", "), "checkbox:Minimap icon, checkbox:Item tooltips, "
+        .. "checkbox:Custom window scale, slider:Window scale")
+
+    local custom, slider = scaleControls()
+    eq(slider.parent, custom, "the slider depends on the checkbox")
+    eq(slider.options.minValue, 50)
+    eq(slider.options.maxValue, 120)
+    eq(slider.options.steps, 14, "steps of 5%")
+    eq(slider.options.formatter(85), "85%")
+end)
+
+test("right-clicking the icon or the add-on menu entry opens the settings", function()
+    local _, world = Mock.Boot()
+    local id = Mock.SettingsPage():GetID()
+    local button = TradingBookMinimapButton
+    button.scripts.OnClick(button, "RightButton")
+    eq(world.openedSettings, id, "from the icon")
+    eq(TradingBookMainFrame, nil, "without opening the window")
+
+    world.openedSettings = nil
+    TradingBook_OnAddonCompartmentClick("TradingBook", "RightButton")
+    eq(world.openedSettings, id, "from the add-on menu")
+    TradingBook_OnAddonCompartmentClick("TradingBook", "LeftButton")
+    eq(TradingBookMainFrame:IsShown(), true, "a left click still opens the window")
+
+    world.openedSettings = nil
+    SlashCmdList.TRADINGBOOK("settings")
+    eq(world.openedSettings, id, "from the slash command")
+end)
+
+test("the minimap and tooltip settings agree with the slash commands", function()
+    local ns, world = Mock.Boot()
+    ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 1, gross = 100 })
+    local minimap = Mock.SettingsControl("Minimap icon").setting
+    local tooltip = Mock.SettingsControl("Item tooltips").setting
+    eq(minimap:GetValue(), true)
+    eq(tooltip:GetValue(), true)
+
+    minimap:SetValue(false)
+    eq(TradingBookMinimapButton:IsShown(), false, "the icon hides")
+    tooltip:SetValue(false)
+    eq(hoverItem(1001), "", "the tooltip lines go")
+    eq(#world.printed, 0, "quietly, the panel shows it")
+
+    SlashCmdList.TRADINGBOOK("minimap")
+    SlashCmdList.TRADINGBOOK("tooltip")
+    eq(minimap:GetValue(), true, "the slash command shows in the settings")
+    eq(tooltip:GetValue(), true)
+    eq(minimap.updates > 0 and tooltip.updates > 0, true, "an open panel is told")
+    eq(TradingBookMinimapButton:IsShown(), true)
+    eq(has(hoverItem(1001), "Last sale"), true)
+
+    minimap:SetValue(false)
+    Mock.Boot({ db = TradingBookDB })
+    eq(Mock.SettingsControl("Minimap icon").setting:GetValue(), false, "kept across a reload")
+    eq(TradingBookMinimapButton:IsShown(), false)
+end)
+
+test("the window follows the game's UI scale until it has a scale of its own", function()
+    Mock.Boot()
+    UIParent:SetScale(0.8)
+    SlashCmdList.TRADINGBOOK("")
+    local frame = TradingBookMainFrame
+    local custom, slider = scaleControls()
+    near(frame:GetEffectiveScale(), 0.8, 0.0001, "the game's scale")
+    eq(custom.setting:GetValue(), false)
+    eq(Mock.IsControlEnabled(slider), false, "slider greyed out")
+    eq(slider.setting:GetValue(), 80, "the slider shows the game's scale")
+    slider.setting:SetValue(110)
+    eq(TradingBookDB.ui.scale, nil, "a greyed-out slider changes nothing")
+
+    custom.setting:SetValue(true)
+    near(frame:GetEffectiveScale(), 0.8, 0.0001, "turning it on changes nothing yet")
+    eq(Mock.IsControlEnabled(slider), true, "slider usable")
+
+    slider.setting:SetValue(110)
+    near(frame:GetEffectiveScale(), 1.1, 0.0001, "the window's own scale")
+
+    UIParent:SetScale(0.6)
+    Mock.Fire("UI_SCALE_CHANGED")
+    near(frame:GetEffectiveScale(), 1.1, 0.0001, "kept when the game's scale changes")
+    eq(slider.setting:GetValue(), 110)
+
+    custom.setting:SetValue(false)
+    near(frame:GetEffectiveScale(), 0.6, 0.0001, "the game's scale again")
+    eq(TradingBookDB.ui.scale, nil)
+end)
+
+test("a scale of its own starts from the game's, on the slider's steps and range", function()
+    Mock.Boot()
+    local custom, slider = scaleControls()
+    for _, case in ipairs({ { 0.71, 70 }, { 0.73, 75 }, { 0.4, 50 }, { 1.5, 120 } }) do
+        UIParent:SetScale(case[1])
+        custom.setting:SetValue(true)
+        eq(slider.setting:GetValue(), case[2], "from " .. case[1])
+        near(TradingBookDB.ui.scale, case[2] / 100, 0.0001, "saved from " .. case[1])
+        custom.setting:SetValue(false)
+    end
+end)
+
+test("the scale is set before the window first shows, and kept across a reload", function()
+    Mock.Boot()
+    UIParent:SetScale(0.7)
+    local custom, slider = scaleControls()
+    custom.setting:SetValue(true)
+    slider.setting:SetValue(90)
+    Mock.Fire("UI_SCALE_CHANGED") -- No window yet.
+    SlashCmdList.TRADINGBOOK("")
+    near(TradingBookMainFrame:GetEffectiveScale(), 0.9, 0.0001, "on creation")
+
+    Mock.Boot({ db = TradingBookDB })
+    UIParent:SetScale(0.7)
+    SlashCmdList.TRADINGBOOK("")
+    near(TradingBookMainFrame:GetEffectiveScale(), 0.9, 0.0001, "after a reload")
+    eq(Mock.SettingsControl("Window scale").setting:GetValue(), 90)
+end)
+
+test("changing the scale keeps the window's centre on the same spot of the screen", function()
+    Mock.Boot()
+    UIParent:SetScale(0.8)
+    SlashCmdList.TRADINGBOOK("")
+    local frame = TradingBookMainFrame
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 300, 1100)
+    frame.scripts.OnDragStop(frame)
+    local x, y = screenCenter(frame)
+
+    local custom, slider = scaleControls()
+    custom.setting:SetValue(true)
+    slider.setting:SetValue(120)
+    local newX, newY = screenCenter(frame)
+    near(newX, x, 0.01, "x")
+    near(newY, y, 0.01, "y")
+
+    Mock.Boot({ db = TradingBookDB })
+    UIParent:SetScale(0.8)
+    SlashCmdList.TRADINGBOOK("")
+    newX, newY = screenCenter(TradingBookMainFrame)
+    near(newX, x, 0.01, "x after a reload")
+    near(newY, y, 0.01, "y after a reload")
+end)
+
+test("restoring the defaults gives back the game's scale, the icon and the tooltip lines", function()
+    for _, reverse in ipairs({ false, true }) do
+        Mock.Boot()
+        UIParent:SetScale(0.7)
+        local page = Mock.SettingsPage()
+        local custom, slider = scaleControls()
+        custom.setting:SetValue(true)
+        slider.setting:SetValue(110)
+        Mock.SettingsControl("Minimap icon").setting:SetValue(false)
+        Mock.SettingsControl("Item tooltips").setting:SetValue(false)
+
+        local first, last, step = 1, #page.controls, 1
+        if reverse then
+            first, last, step = last, first, -1
+        end
+        for index = first, last, step do
+            page.controls[index].setting:SetValueToDefault()
+        end
+        local order = reverse and "in reverse order" or "in order"
+        eq(TradingBookDB.ui.scale, nil, "follows the game again, " .. order)
+        eq(slider.setting:GetValue(), 70, "the slider shows the game's scale, " .. order)
+        eq(TradingBookMinimapButton:IsShown(), true, "icon, " .. order)
+        eq(TradingBookDB.ui.hideItemTooltip, nil, "tooltip lines, " .. order)
+    end
 end)
 
 test("the slash command opens tabs and explains itself otherwise", function()

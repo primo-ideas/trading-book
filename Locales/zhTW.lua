@@ -117,10 +117,11 @@ ns.Translation = {
     ["%d d"] = "%d天",
     ["%d h"] = "%d小時",
     ["%d min"] = "%d分鐘",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "左鍵：開啟或關閉",
+    ["Right-click: settings"] = "右鍵：設定",
     ["Drag: move"] = "拖曳：移動",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap：隱藏此圖示",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "小地圖圖示已隱藏。輸入 /tradingbook minimap 可重新顯示。",
@@ -130,4 +131,14 @@ ns.Translation = {
     ["Last sale (%s)"] = "最近售出（%s）",
     ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "已隱藏物品滑鼠提示中的資訊。輸入 /tradingbook tooltip 可重新顯示。",
     ["Item tooltip lines shown."] = "已重新在物品滑鼠提示中顯示資訊。",
+
+    -- Settings
+    ["Minimap icon"] = "小地圖圖示",
+    ["Shows Trading Book's icon on the edge of the minimap."] = "在小地圖邊緣顯示 Trading Book 圖示。",
+    ["Item tooltips"] = "物品滑鼠提示",
+    ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "在物品的滑鼠提示中加入帳號持有的數量與售出的價格。",
+    ["Custom window scale"] = "視窗獨立縮放",
+    ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "視窗不再使用遊戲的介面縮放：遊戲縮放改變時，視窗保持大小不變。",
+    ["Window scale"] = "視窗縮放",
+    ["The window's size, in percent like the game's UI scale."] = "視窗的大小，以百分比表示，與遊戲的介面縮放相同。",
 }

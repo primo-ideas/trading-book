@@ -94,7 +94,12 @@ function Object:SetText(text) self.text = text end
 function Object:GetText() return self.text end
 function Object:GetParent() return rawget(self, "parent") end
 function Object:GetFontString() return self.fontString end
-function Object:GetPoint() return "CENTER", nil, "CENTER", 10, 20 end
+function Object:GetPoint()
+    local anchor = rawget(self, "lastPoint")
+    if anchor then
+        return anchor.point, anchor.relativeTo, anchor.relativePoint, anchor.x, anchor.y
+    end
+end
 function Object:SetChecked(checked) self.checked = checked end
 function Object:GetChecked() return self.checked end
 function Object:SetScript(name, fn) self.scripts[name] = fn end
@@ -144,8 +149,32 @@ function Object:SetWidth(width) self.width = width end
 function Object:SetHeight(height) self.height = height end
 function Object:GetWidth() return self.width end
 function Object:GetHeight() return self.height end
-function Object:GetCenter() return self.centerX, self.centerY end
-function Object:GetEffectiveScale() return self.effectiveScale end
+function Object:SetScale(scale)
+    assert(type(scale) == "number" and scale > 0, "Invalid scale: " .. tostring(scale))
+    self.scale = scale
+end
+function Object:GetScale() return rawget(self, "scale") or 1 end
+function Object:GetEffectiveScale()
+    local fixed = rawget(self, "effectiveScale")
+    if fixed then
+        return fixed
+    end
+    local parent = rawget(self, "parent")
+    return self:GetScale() * (parent and parent:GetEffectiveScale() or 1)
+end
+
+-- In the object's own coordinates, like the client: screen units over its effective scale.
+function Object:GetCenter()
+    if rawget(self, "centerX") then
+        return self.centerX, self.centerY
+    end
+    local rect = Mock.Rect(self)
+    if not rect then
+        return nil
+    end
+    local scale = self:GetEffectiveScale()
+    return (rect.left + rect.right) / 2 / scale, (rect.top + rect.bottom) / 2 / scale
+end
 
 function Object:GetStringWidth()
     local text = tostring(self.text)
@@ -186,6 +215,7 @@ end
 
 function Object:ClearAllPoints()
     self.points = {}
+    self.lastPoint = nil
 end
 
 function Object:SetAllPoints(target)
@@ -210,20 +240,23 @@ function Mock.Rect(object)
         local start, stop = rawget(object, "lineStart"), rawget(object, "lineEnd")
         if not (start and stop) then return nil end
         local origin = Mock.Rect(start.relativeTo)
-        local x1, y1 = origin.left + start.x, origin.bottom + start.y
-        local x2, y2 = origin.left + stop.x, origin.bottom + stop.y
+        local scale = object:GetEffectiveScale()
+        local x1, y1 = origin.left + start.x * scale, origin.bottom + start.y * scale
+        local x2, y2 = origin.left + stop.x * scale, origin.bottom + stop.y * scale
         return { left = math.min(x1, x2), right = math.max(x1, x2), top = math.max(y1, y2), bottom = math.min(y1, y2) }
     end
     if next(object.points) == nil then
         return nil
     end
 
+    -- Offsets and sizes are in the object's own scale, rectangles in screen units.
+    local scale = object:GetEffectiveScale()
     local left, right, top, bottom, centerX, centerY
     for point, anchor in pairs(object.points) do
         local target = Mock.Rect(anchor.relativeTo)
         if not target then return nil end
         local x, y = PointIn(target, anchor.relativePoint)
-        x, y = x + anchor.x, y + anchor.y
+        x, y = x + anchor.x * scale, y + anchor.y * scale
         if point:find("LEFT") then left = x elseif point:find("RIGHT") then right = x else centerX = x end
         if point:find("TOP") then top = y elseif point:find("BOTTOM") then bottom = y else centerY = y end
     end
@@ -233,7 +266,7 @@ function Mock.Rect(object)
         width = width or object:GetStringWidth()
         height = height or FONTS[object.font][2]
     end
-    width, height = width or 0, height or 0
+    width, height = (width or 0) * scale, (height or 0) * scale
 
     if left and right then
         width = right - left
@@ -373,6 +406,56 @@ local function NewTooltip()
     return tooltip
 end
 
+-- The game's options panel ----------------------------------------------------
+
+-- Settings checked like the client does: types must match, defaults included.
+local function NewProxySetting(category, variable, variableType, name, defaultValue, getValue, setValue)
+    assert(category and category.controls, "RegisterProxySetting needs a category")
+    assert(type(variable) == "string" and type(name) == "string" and type(variableType) == "string")
+    assert(type(getValue) == "function" and type(setValue) == "function")
+    assert(not world.settings[variable], "Setting variable registered twice: " .. variable)
+    local function Default()
+        if type(defaultValue) == "function" then
+            return defaultValue()
+        end
+        return defaultValue
+    end
+    assert(type(Default()) == variableType, "Default of the wrong type for " .. variable)
+
+    local setting = { variable = variable, name = name, category = category, updates = 0 }
+    function setting:GetName() return name end
+    function setting:GetVariableType() return variableType end
+    function setting:GetDefaultValue() return Default() end
+    function setting:GetValue()
+        local value = getValue()
+        assert(type(value) == variableType, ("%s reads a %s"):format(variable, type(value)))
+        return value
+    end
+    -- Like ApplyValue: the setter only runs on a change.
+    function setting:SetValue(value)
+        assert(type(value) == variableType, ("SetValue %s with a %s"):format(variable, type(value)))
+        if getValue() ~= value then
+            setValue(value)
+        end
+    end
+    function setting:SetValueToDefault() self:SetValue(Default()) end
+    function setting:NotifyUpdate() self.updates = self.updates + 1 end
+    world.settings[variable] = setting
+    return setting
+end
+
+local function AddControl(category, kind, setting, options, tooltip)
+    assert(setting.category == category, "Control in another category than its setting")
+    assert(tooltip == nil or type(tooltip) == "string")
+    local control = { kind = kind, setting = setting, options = options, tooltip = tooltip }
+    function control:SetParentInitializer(parent, predicate)
+        assert(parent and parent ~= self and (predicate == nil or type(predicate) == "function"))
+        self.parent, self.predicate = parent, predicate
+    end
+    table.insert(category.controls, control)
+    return control
+end
+
 local function SplitBagSlot(location)
     return world.bags[location.bag] and world.bags[location.bag][location.slot]
 end
@@ -419,6 +502,40 @@ local function InstallApi()
             table.insert(world.tooltipPostCalls[dataType], fn)
         end,
     }
+
+    G.Settings = {
+        VarType = { Boolean = "boolean", String = "string", Number = "number" },
+        RegisterVerticalLayoutCategory = function(name)
+            assert(type(name) == "string")
+            local category = { name = name, id = 1000 + #world.settingsCategories, controls = {} }
+            function category:GetID() return self.id end
+            table.insert(world.settingsCategories, category)
+            return category, {}
+        end,
+        RegisterProxySetting = NewProxySetting,
+        CreateCheckbox = function(category, setting, tooltip)
+            assert(setting:GetVariableType() == "boolean")
+            return AddControl(category, "checkbox", setting, nil, tooltip)
+        end,
+        CreateSliderOptions = function(minValue, maxValue, rate)
+            local options = { minValue = minValue, maxValue = maxValue, steps = (maxValue - minValue) / rate }
+            function options:SetLabelFormatter(labelType, formatter)
+                assert(labelType ~= nil and type(formatter) == "function")
+                self.formatter = formatter
+            end
+            return options
+        end,
+        CreateSlider = function(category, setting, options, tooltip)
+            assert(setting:GetVariableType() == "number" and options ~= nil)
+            return AddControl(category, "slider", setting, options, tooltip)
+        end,
+        RegisterAddOnCategory = function(category) category.registered = true end,
+        OpenToCategory = function(categoryID)
+            assert(type(categoryID) == "number")
+            world.openedSettings = categoryID
+        end,
+    }
+    G.MinimalSliderWithSteppersMixin = { Label = { Left = 1, Right = 2, Top = 3, Min = 4, Max = 5 } }
 
     G.ButtonFrameTemplate_HideButtonBar = function(frame)
         frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
@@ -612,6 +729,29 @@ function Mock.MenuEntries(dropdown)
     return entries
 end
 
+-- The add-on's page in the game's options, once registered.
+function Mock.SettingsPage()
+    for _, category in ipairs(world.settingsCategories) do
+        if category.registered then
+            return category
+        end
+    end
+end
+
+function Mock.SettingsControl(name)
+    for _, control in ipairs(Mock.SettingsPage().controls) do
+        if control.setting:GetName() == name then
+            return control
+        end
+    end
+    error("No setting named " .. name)
+end
+
+-- Greyed out in the panel when its parent's predicate says so.
+function Mock.IsControlEnabled(control)
+    return control.predicate == nil or control.predicate() == true
+end
+
 -- Money as the client writes it, with coin icons, for checks on text width.
 function Mock.UseRealisticMoney()
     local coin = "|TInterface\\MoneyFrame\\UI-GoldIcon:14:14|t"
@@ -698,6 +838,8 @@ function Mock.Boot(options)
         warbandMoney = 0,
         cursorX = 0,
         cursorY = 0,
+        settingsCategories = {},
+        settings = {},
     }
     objects = {}
 
