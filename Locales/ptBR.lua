@@ -81,7 +81,7 @@ ns.Translation = {
     ["Net profit = sales - purchases - fees"] = "Lucro líquido = vendas - compras - taxas",
     ["Fees = cut + unrefunded deposits + cancellation costs"] = "Taxas = comissão + depósitos não reembolsados + custos de cancelamento",
     ["Share of listed quantity that sold, among auctions that ended"] = "Parte da quantidade anunciada que foi vendida, entre os leilões encerrados",
-    ["Priced with Auctionator, or your recent sales when it has no price"] = "Avaliado com o Auctionator ou, sem preço, com suas vendas recentes",
+    ["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] = "Estimado com o Auctionator ou a varredura da casa de leilões, ou com suas vendas recentes na falta deles",
     ["Net result per day"] = "Resultado líquido por dia",
     ["Net result per %d days"] = "Resultado líquido a cada %d dias",
     ["Net result"] = "Resultado líquido",
@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d d",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clique esquerdo: abrir ou fechar",
@@ -141,4 +141,17 @@ ns.Translation = {
     ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "Substitui a escala da interface do jogo para a janela: ela mantém o tamanho quando a escala do jogo muda.",
     ["Window scale"] = "Escala da janela",
     ["The window's size, in percent like the game's UI scale."] = "O tamanho da janela, em porcentagem como a escala da interface do jogo.",
+
+    -- Auction house scan
+    ["Scan the auction house"] = "Varrer a casa de leilões",
+    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "Varre a casa de leilões ao abri-la, no máximo a cada 15 minutos como o jogo permite, a menos que o Auctionator já tenha preços. /tradingbook scan inicia uma varredura manual.",
+    ["Scanning the auction house..."] = "Varrendo a casa de leilões...",
+    ["Auction house scanned: %s items priced."] = "Casa de leilões varrida: %s itens com preço.",
+    ["Open the auction house to scan it."] = "Abra a casa de leilões para varrê-la.",
+    ["The auction house can be scanned again in %s."] = "A casa de leilões poderá ser varrida de novo em %s.",
+    ["The auction house scan stopped as the auction house closed."] = "A varredura parou quando a casa de leilões foi fechada.",
+    ["AH price (%s ago)"] = "Preço no leilão (há %s)",
+    ["On the AH"] = "No leilão",
+    ["Change since %s"] = "Variação desde %s",
+    ["Source: auction house scan of %s"] = "Fonte: varredura da casa de leilões de %s",
 }

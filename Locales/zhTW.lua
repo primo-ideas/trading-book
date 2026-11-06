@@ -81,7 +81,7 @@ ns.Translation = {
     ["Net profit = sales - purchases - fees"] = "淨利 = 售出 - 購買 - 費用",
     ["Fees = cut + unrefunded deposits + cancellation costs"] = "費用 = 手續費 + 未退還的保證金 + 取消費用",
     ["Share of listed quantity that sold, among auctions that ended"] = "已結束拍賣中售出數量的比例",
-    ["Priced with Auctionator, or your recent sales when it has no price"] = "依 Auctionator 估價，無價格時依你最近的售出紀錄",
+    ["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] = "依 Auctionator 或拍賣場掃描估價，兩者都沒有價格時依你最近的售價",
     ["Net result per day"] = "每日淨收益",
     ["Net result per %d days"] = "每 %d 天淨收益",
     ["Net result"] = "淨收益",
@@ -117,7 +117,7 @@ ns.Translation = {
     ["%d d"] = "%d天",
     ["%d h"] = "%d小時",
     ["%d min"] = "%d分鐘",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | scan | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "左鍵：開啟或關閉",
@@ -141,4 +141,17 @@ ns.Translation = {
     ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "視窗不再使用遊戲的介面縮放：遊戲縮放改變時，視窗保持大小不變。",
     ["Window scale"] = "視窗縮放",
     ["The window's size, in percent like the game's UI scale."] = "視窗的大小，以百分比表示，與遊戲的介面縮放相同。",
+
+    -- Auction house scan
+    ["Scan the auction house"] = "掃描拍賣場",
+    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "開啟拍賣場時進行掃描，依遊戲限制最多每15分鐘一次；若 Auctionator 已有價格則不掃描。輸入 /tradingbook scan 可手動掃描。",
+    ["Scanning the auction house..."] = "正在掃描拍賣場...",
+    ["Auction house scanned: %s items priced."] = "拍賣場掃描完成：已取得 %s 件物品的價格。",
+    ["Open the auction house to scan it."] = "請開啟拍賣場以進行掃描。",
+    ["The auction house can be scanned again in %s."] = "%s 後可再次掃描拍賣場。",
+    ["The auction house scan stopped as the auction house closed."] = "拍賣場已關閉，掃描已中止。",
+    ["AH price (%s ago)"] = "拍賣場價格（%s前）",
+    ["On the AH"] = "拍賣場在售",
+    ["Change since %s"] = "自 %s 以來的變化",
+    ["Source: auction house scan of %s"] = "來源：%s 的拍賣場掃描",
 }

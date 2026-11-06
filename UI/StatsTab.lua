@@ -16,7 +16,7 @@ local TILES = {
     { key = "sellThrough", label = L["Sell-through"], icon = "Interface\\Icons\\Achievement_Reputation_08",
         hint = L["Share of listed quantity that sold, among auctions that ended"] },
     { key = "stockValue", label = L["Stock value (est.)"], icon = "Interface\\Icons\\INV_Box_01",
-        hint = L["Priced with Auctionator, or your recent sales when it has no price"] },
+        hint = L["Priced with Auctionator or the auction house scan, or your recent sales when neither has a price"] },
     { key = "gold", label = L["Total gold"], icon = "Interface\\Icons\\INV_Misc_Coin_01" },
     { key = "goldChange", label = L["Gold change"], icon = "Interface\\Icons\\Achievement_GuildPerk_CashFlow" },
 }

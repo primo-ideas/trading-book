@@ -244,3 +244,4 @@ end
 ns.Subscribe("LEDGER_CHANGED", RequestRefresh)
 ns.Subscribe("AUCTIONS_CHANGED", RequestRefresh)
 ns.Subscribe("STOCK_CHANGED", RequestRefresh)
+ns.Subscribe("MARKET_CHANGED", RequestRefresh)

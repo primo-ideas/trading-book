@@ -202,14 +202,27 @@ local function AverageSalePrice(itemID)
     return stats and stats.average
 end
 
--- Current unit value of an item, and where it comes from ("auctionator" or "sales").
-function Stats.GetUnitPrice(itemID)
+-- Auctionator's price for an item, if it is installed and knows one.
+function Stats.GetAuctionatorPrice(itemID)
     local api = Auctionator and Auctionator.API and Auctionator.API.v1
     if api and api.GetAuctionPriceByItemID then
         local ok, price = pcall(api.GetAuctionPriceByItemID, "TradingBook", itemID)
         if ok and price then
-            return price, "auctionator"
+            return price
         end
+    end
+end
+
+-- Current unit value of an item, where it comes from ("auctionator", "scan" or
+-- "sales"), and for a scan when the item was last seen on sale.
+function Stats.GetUnitPrice(itemID)
+    local price = Stats.GetAuctionatorPrice(itemID)
+    if price then
+        return price, "auctionator"
+    end
+    local market = ns.Market.GetItem(itemID)
+    if market then
+        return market.price, "scan", market.seenAt
     end
     local average = AverageSalePrice(itemID)
     if average then
