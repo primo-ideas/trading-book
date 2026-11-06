@@ -117,10 +117,11 @@ ns.Translation = {
     ["%d d"] = "%d d",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clique esquerdo: abrir ou fechar",
+    ["Right-click: settings"] = "Clique direito: opções",
     ["Drag: move"] = "Arrastar: mover",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: ocultar este ícone",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "Ícone do minimapa oculto. Digite /tradingbook minimap para trazê-lo de volta.",
@@ -130,4 +131,14 @@ ns.Translation = {
     ["Last sale (%s)"] = "Última venda (%s)",
     ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "Linhas ocultas nas dicas dos itens. Digite /tradingbook tooltip para trazê-las de volta.",
     ["Item tooltip lines shown."] = "Linhas exibidas novamente nas dicas dos itens.",
+
+    -- Settings
+    ["Minimap icon"] = "Ícone do minimapa",
+    ["Shows Trading Book's icon on the edge of the minimap."] = "Mostra o ícone do Trading Book na borda do minimapa.",
+    ["Item tooltips"] = "Dicas dos itens",
+    ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "Adiciona à dica de um item quanto a conta possui dele e por quanto ele foi vendido.",
+    ["Custom window scale"] = "Escala própria da janela",
+    ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "Substitui a escala da interface do jogo para a janela: ela mantém o tamanho quando a escala do jogo muda.",
+    ["Window scale"] = "Escala da janela",
+    ["The window's size, in percent like the game's UI scale."] = "O tamanho da janela, em porcentagem como a escala da interface do jogo.",
 }

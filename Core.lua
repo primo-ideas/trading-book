@@ -243,16 +243,22 @@ SlashCmdList.TRADINGBOOK = function(message)
         ns.UI.Toggle()
     elseif command == "auctions" or command == "stock" or command == "stats" or command == "gold" then
         ns.UI.Open(command)
+    elseif command == "settings" then
+        ns.UI.OpenSettings()
     elseif command == "minimap" then
         ns.UI.ToggleMinimapButton()
     elseif command == "tooltip" then
         ns.UI.ToggleItemTooltip()
     else
-        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"])
+        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"])
     end
 end
 
 -- Named by AddonCompartmentFunc in the TOC.
-function TradingBook_OnAddonCompartmentClick()
-    ns.UI.Toggle()
+function TradingBook_OnAddonCompartmentClick(_, mouseButton)
+    if mouseButton == "RightButton" then
+        ns.UI.OpenSettings()
+    else
+        ns.UI.Toggle()
+    end
 end

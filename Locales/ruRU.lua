@@ -117,10 +117,11 @@ ns.Translation = {
     ["%d d"] = "%d дн.",
     ["%d h"] = "%d ч",
     ["%d min"] = "%d мин",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "ЛКМ: открыть или закрыть",
+    ["Right-click: settings"] = "ПКМ: настройки",
     ["Drag: move"] = "Перетащить: переместить",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: скрыть этот значок",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "Значок у миникарты скрыт. Введите /tradingbook minimap, чтобы вернуть его.",
@@ -130,4 +131,14 @@ ns.Translation = {
     ["Last sale (%s)"] = "Последняя продажа (%s)",
     ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "Строки в подсказках к предметам скрыты. Введите /tradingbook tooltip, чтобы вернуть их.",
     ["Item tooltip lines shown."] = "Строки в подсказках к предметам снова показаны.",
+
+    -- Settings
+    ["Minimap icon"] = "Значок у миникарты",
+    ["Shows Trading Book's icon on the edge of the minimap."] = "Показывает значок Trading Book на краю миникарты.",
+    ["Item tooltips"] = "Подсказки к предметам",
+    ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "Добавляет в подсказку к предмету, сколько его на учётной записи и за сколько он продавался.",
+    ["Custom window scale"] = "Свой масштаб окна",
+    ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "Заменяет масштаб интерфейса игры для окна: оно сохраняет размер, когда масштаб игры меняется.",
+    ["Window scale"] = "Масштаб окна",
+    ["The window's size, in percent like the game's UI scale."] = "Размер окна в процентах, как масштаб интерфейса игры.",
 }

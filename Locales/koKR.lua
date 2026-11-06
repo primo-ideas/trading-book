@@ -117,10 +117,11 @@ ns.Translation = {
     ["%d d"] = "%d일",
     ["%d h"] = "%d시간",
     ["%d min"] = "%d분",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | minimap | tooltip]",
+    ["Usage: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "왼쪽 클릭: 열기 또는 닫기",
+    ["Right-click: settings"] = "오른쪽 클릭: 설정",
     ["Drag: move"] = "드래그: 이동",
     ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: 이 아이콘 숨기기",
     ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "미니맵 아이콘을 숨겼습니다. 다시 표시하려면 /tradingbook minimap을 입력하세요.",
@@ -130,4 +131,14 @@ ns.Translation = {
     ["Last sale (%s)"] = "최근 판매 (%s)",
     ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "아이템 툴팁의 정보를 숨겼습니다. 다시 표시하려면 /tradingbook tooltip을 입력하세요.",
     ["Item tooltip lines shown."] = "아이템 툴팁에 정보를 다시 표시합니다.",
+
+    -- Settings
+    ["Minimap icon"] = "미니맵 아이콘",
+    ["Shows Trading Book's icon on the edge of the minimap."] = "미니맵 가장자리에 Trading Book 아이콘을 표시합니다.",
+    ["Item tooltips"] = "아이템 툴팁",
+    ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "아이템 툴팁에 계정의 보유량과 판매 가격을 추가합니다.",
+    ["Custom window scale"] = "창 전용 크기 비율",
+    ["Replaces the game's UI scale for the window: it keeps its size when the game's scale changes."] = "게임의 UI 크기 비율 대신 창에 별도의 비율을 사용합니다. 게임의 비율이 바뀌어도 창의 크기는 유지됩니다.",
+    ["Window scale"] = "창 크기 비율",
+    ["The window's size, in percent like the game's UI scale."] = "창의 크기를 게임의 UI 크기 비율처럼 퍼센트로 나타냅니다.",
 }

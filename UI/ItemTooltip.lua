@@ -48,12 +48,21 @@ end
 
 TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnItemTooltip)
 
+function UI.IsItemTooltipShown()
+    return not ns.db.ui.hideItemTooltip
+end
+
+function UI.SetItemTooltipShown(shown)
+    ns.db.ui.hideItemTooltip = not shown or nil
+end
+
 function UI.ToggleItemTooltip()
-    local settings = ns.db.ui
-    settings.hideItemTooltip = not settings.hideItemTooltip
-    if settings.hideItemTooltip then
-        ns.Print(L["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."])
-    else
+    local shown = not UI.IsItemTooltipShown()
+    UI.SetItemTooltipShown(shown)
+    UI.RefreshSettings()
+    if shown then
         ns.Print(L["Item tooltip lines shown."])
+    else
+        ns.Print(L["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."])
     end
 end
