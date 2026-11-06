@@ -184,4 +184,8 @@ ns.Translation = {
     ["Sell target"] = "판매 목표가",
     ["History as CSV"] = "CSV 형식의 기록",
     ["The text is selected: copy it, then paste it into a spreadsheet."] = "텍스트가 선택되어 있습니다. 복사한 뒤 스프레드시트에 붙여 넣으세요.",
+    ["%s unpriced"] = "가격 미상 %s건",
+    ["Purchases whose mail invoice could not be read have no price: they count as zero, and the corner shows how many"] = "우편 영수증을 읽지 못한 구매는 가격이 없어 0으로 계산되며, 모서리에 그 수가 표시됩니다",
+    ["unknown"] = "알 수 없음",
+    ["The mail's invoice could not be read."] = "우편 영수증을 읽을 수 없었습니다.",
 }

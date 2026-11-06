@@ -251,6 +251,32 @@ test("a purchase uses the invoice price and the attached item", function()
     eq(entry.other, "Alice")
 end)
 
+test("a purchase whose invoice cannot be read has an unknown price, left out of the totals", function()
+    local ns, world = Mock.Boot()
+    world.mails = { {
+        subject = "Auction won: Herb (20)",
+        items = { { name = "Herb", id = 1001, count = 20, link = "|Hitem:1001|h[Herb]|h" } },
+    } }
+    Mock.Fire("MAIL_SHOW")
+    AutoLootMailItem(1)
+    local entry = TradingBookDB.ledger[1]
+    eq(entry.kind, "bought")
+    eq(entry.gross, nil, "not zero")
+    eq(entry.qty, 20)
+    eq(ns.Ledger.IsPriceUnknown(entry), true)
+    eq(ns.Ledger.UnitPrice(entry), nil)
+    eq(ns.Ledger.Amount(entry), nil)
+
+    ns.Ledger.Add({ kind = "bought", itemID = 1001, name = "Herb", qty = 10, gross = 500 })
+    eq(ns.Ledger.IsPriceUnknown(TradingBookDB.ledger[2]), false)
+    local summary = ns.Stats.Summarize()
+    eq(summary.spent, 500)
+    eq(summary.net, -500)
+    eq(summary.unpricedPurchases, 1)
+    eq(summary.items[1001].boughtQty, 30, "every unit bought")
+    eq(summary.items[1001].pricedBoughtQty, 10, "only the units with a price")
+end)
+
 test("collection failing on full bags can be retried without double counting", function()
     local _, world = Mock.Boot()
     world.mails = { {
@@ -962,6 +988,21 @@ test("existing saved data survives a reload", function()
     local reloaded = Mock.Boot({ db = saved })
     eq(#TradingBookDB.ledger, 1)
     eq(findRow(reloaded.Stockpile.GetRows(), 1001).bank, 10)
+end)
+
+test("purchases the first schema recorded at zero become unknown, once", function()
+    Mock.Boot({ db = { schema = 1, ledger = {
+        { kind = "bought", t = 1, itemID = 1001, qty = 1, gross = 0 },
+        { kind = "bought", t = 2, itemID = 1001, qty = 1, gross = 300 },
+        { kind = "sold", t = 3, itemID = 1001, qty = 1, gross = 0 },
+    } } })
+    eq(TradingBookDB.ledger[1].gross, nil, "zero was the missing invoice")
+    eq(TradingBookDB.ledger[2].gross, 300, "a known price stays")
+    eq(TradingBookDB.ledger[3].gross, 0, "only purchases")
+    eq(TradingBookDB.schema, 2)
+
+    Mock.Boot()
+    eq(TradingBookDB.schema, 2, "a new account starts at the current schema")
 end)
 
 -- Interface -----------------------------------------------------------------
@@ -2256,6 +2297,12 @@ test("closing the auction house drops a scan in progress and keeps the previous 
     eq(has(world.printed[#world.printed], "scan stopped"), true, world.printed[#world.printed])
 end)
 
+test("a scan's answer is not read while the auction house is closed", function()
+    local ns = Mock.Boot()
+    answerScan({ auction(1001, 1, 90) })
+    eq(ns.Market.GetItem(1001), nil)
+end)
+
 test("a request the server never answers does not block the next one", function()
     local _, world = Mock.Boot()
     openAuctionHouse()
@@ -2645,6 +2692,52 @@ test("item tooltips show the targets of a watched item, even one neither held no
     eq(has(text, "Sell target=50000c"), true, text)
 end)
 
+test("a price can be split by spaces, as players often write it", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    SlashCmdList.TRADINGBOOK("watch Herb 12g 50s")
+    eq(ns.Watch.Get(1001) and ns.Watch.Get(1001).below, 125000, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("watch " .. HERB_LINK .. " above 1g 5s 25c")
+    eq(ns.Watch.Get(1001).above, 10525, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("watch Herb below 2g50s 10c")
+    eq(ns.Watch.Get(1001).below, 25010, lastPrinted(world))
+    SlashCmdList.TRADINGBOOK("watch Herb 3 50s")
+    eq(has(lastPrinted(world), "Unknown item."), true, "a bare number is not a coin: " .. lastPrinted(world))
+    eq(ns.Watch.Get(1001).below, 25010, "unchanged")
+end)
+
+test("with Auctionator, its full scan is read, so undercuts and watched items are checked", function()
+    local ns, world = Mock.Boot()
+    ns.RememberItem(1001, "Herb", 1, 1)
+    setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100) })
+    SlashCmdList.TRADINGBOOK("watch Herb 1g")
+    rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function() return 500 end } } })
+    openAuctionHouse()
+    rawset(_G, "Auctionator", nil)
+    eq(world.replicateRequests, 0, "Auctionator has prices: no request of our own")
+
+    -- Auctionator asks for a full scan, and the game answers every addon.
+    local printed = #world.printed
+    answerScan({ auction(1001, 1, 90), auction(1001, 1, 100) })
+    local said = table.concat(world.printed, "\n", printed + 1)
+    eq(ns.Market.GetItem(1001).price, 90)
+    eq(has(said, "Undercut auctions: 1."), true, said)
+    eq(has(said, "Watched Herb is at 90c: buy at 10000c or less."), true, said)
+
+    world.now = world.now + 60
+    printed = #world.printed
+    answerScan({ auction(1001, 1, 10) })
+    eq(ns.Market.GetItem(1001).price, 90, "within 15 minutes, the event repeats the same answer")
+    eq(#world.printed, printed, "nothing said twice")
+    SlashCmdList.TRADINGBOOK("scan")
+    eq(world.replicateRequests, 0, "the game would refuse a request this soon")
+    eq(has(lastPrinted(world), "scanned again in 14 min"), true, lastPrinted(world))
+
+    world.now = world.now + 20 * 60
+    answerScan({ auction(1001, 1, 80) })
+    eq(ns.Market.GetItem(1001).price, 80, "the next scan is read")
+end)
+
 -- Export ----------------------------------------------------------------------------
 
 local function exportBox()
@@ -2687,6 +2780,19 @@ test("the export box cannot be edited, closes on Escape, and is fresh when reope
     eq(has(box:GetText(), "expired,Herb,1001,3,,0,Primo-Hyjal,"), true, box:GetText())
 end)
 
+test("the export leaves the amounts of a purchase with an unknown price empty", function()
+    local _, world = Mock.Boot()
+    world.mails = { {
+        subject = "Auction won: Herb (20)",
+        items = { { name = "Herb", id = 1001, count = 20, link = "|Hitem:1001|h[Herb]|h" } },
+    } }
+    Mock.Fire("MAIL_SHOW")
+    AutoLootMailItem(1)
+    SlashCmdList.TRADINGBOOK("export")
+    local csv = exportBox():GetText()
+    eq(has(csv, "\n2026-11-05 12:00,bought,Herb,1001,20,,,Primo-Hyjal,"), true, csv)
+end)
+
 layoutTest("the export hint fits on one line beside the portrait", function()
     Mock.Boot({ locale = layoutLocale })
     SlashCmdList.TRADINGBOOK("export")
@@ -2699,6 +2805,88 @@ layoutTest("the export hint fits on one line beside the portrait", function()
     local rect = Mock.Rect(hint)
     eq(hint:GetStringWidth() <= rect.right - rect.left, true,
         ("%.0f wide for %.0f: %s"):format(hint:GetStringWidth(), rect.right - rect.left, hint:GetText()))
+end)
+
+-- Unknown purchase prices ----------------------------------------------------------
+
+-- Keeps the note each tile shows in its corner, by key.
+local function captureTileNotes(ns)
+    local notes = {}
+    local createTile = ns.UI.CreateTile
+    ns.UI.CreateTile = function(parent, spec, width)
+        local tile = createTile(parent, spec, width)
+        local setNote = tile.SetNote
+        tile.SetNote = function(self, text)
+            notes[spec.key] = text
+            setNote(self, text)
+        end
+        return tile
+    end
+    return notes
+end
+
+test("the stats say how many purchases have no price, and average only the priced ones", function()
+    local ns = Mock.Boot()
+    local notes = captureTileNotes(ns)
+    local tables = captureTables(ns)
+    ns.Ledger.Add({ kind = "bought", itemID = 1001, name = "Herb", qty = 10, gross = 500 })
+    ns.UI.Open("stats")
+    eq(notes.spent, "", "every price known")
+
+    ns.Ledger.Add({ kind = "bought", itemID = 1001, name = "Herb", qty = 20 })
+    Mock.RunTimers()
+    eq(notes.spent, "1 unpriced")
+    local row = tables[1].rows[1]
+    eq(row.boughtQty, 30)
+    eq(row.avgPurchase, 50, "the unpriced units do not lower the average")
+end)
+
+test("the history shows a purchase with no price as unknown, not as free", function()
+    local ns = Mock.Boot()
+    local tables = captureTables(ns)
+    local entry = ns.Ledger.Add({ kind = "bought", itemID = 1001, name = "Herb", qty = 20, other = "Alice" })
+    ns.UI.Open("auctions")
+    local rendered
+    for _, row in ipairs(tables[1].ScrollBox.rendered) do
+        if row.data.entry == entry then
+            rendered = row
+        end
+    end
+    eq(rendered.data.unit, nil)
+    eq(rendered.data.amount, nil)
+    GameTooltip.lines = {}
+    rendered.scripts.OnEnter(rendered)
+    local lines = table.concat(GameTooltip.lines, ";")
+    eq(has(lines, "Paid=unknown"), true, lines)
+    eq(has(lines, "The mail's invoice could not be read."), true, lines)
+    eq(has(lines, "Seller=Alice"), true, lines)
+end)
+
+layoutTest("layout: the count of unpriced purchases stays clear of its tile's label", function()
+    local ns, world = layoutFixture()
+    for i = 1, 1000 do
+        ns.Ledger.Add({ kind = "bought", itemID = 5001, name = "An item", qty = 1, t = world.now - i })
+    end
+    ns.UI.Open("stats")
+    local tiles = {}
+    for _, item in ipairs(visibleContent(TradingBookMainFrame)) do
+        local object = item.object
+        if object.kind == "text" then
+            local parent = rawget(object, "parent")
+            tiles[parent] = tiles[parent] or {}
+            tiles[parent][object.font] = item
+        end
+    end
+    local checked = 0
+    for _, texts in pairs(tiles) do
+        local label, note = texts.GameFontNormalSmall, texts.GameFontDisableSmall
+        if label and note and tostring(note.object.text):find("1000", 1, true) then
+            checked = checked + 1
+            eq(overlap(label.rect, note.rect), false,
+                "overlap: " .. describe(label.object, label.rect) .. " and " .. describe(note.object, note.rect))
+        end
+    end
+    eq(checked, 1, "the purchases tile")
 end)
 
 -- Settings ---------------------------------------------------------------------

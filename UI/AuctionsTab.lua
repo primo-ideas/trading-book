@@ -40,7 +40,7 @@ local function HistoryRow(entry)
         name = entry.name,
         qty = quantity,
         unit = unit,
-        amount = ns.Stats.Net(entry),
+        amount = ns.Ledger.Amount(entry),
         char = entry.char,
     }
 end
@@ -109,7 +109,12 @@ local function ShowRowTooltip(owner, row)
             GameTooltip:AddDoubleLine(L["Buyer"], entry.other, 0.8, 0.8, 0.8, 1, 1, 1)
         end
     elseif entry and entry.kind == "bought" then
-        UI.AddMoneyLine(L["Paid"], entry.gross)
+        if ns.Ledger.IsPriceUnknown(entry) then
+            UI.AddValueLine(GameTooltip, L["Paid"], L["unknown"])
+            GameTooltip:AddLine(L["The mail's invoice could not be read."], 0.8, 0.8, 0.8, true)
+        else
+            UI.AddMoneyLine(L["Paid"], entry.gross)
+        end
         if entry.other then
             GameTooltip:AddDoubleLine(L["Seller"], entry.other, 0.8, 0.8, 0.8, 1, 1, 1)
         end

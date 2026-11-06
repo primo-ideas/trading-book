@@ -184,4 +184,8 @@ ns.Translation = {
     ["Sell target"] = "目標賣價",
     ["History as CSV"] = "CSV 格式的歷史記錄",
     ["The text is selected: copy it, then paste it into a spreadsheet."] = "文字已選取：複製後貼到試算表中。",
+    ["%s unpriced"] = "%s 筆無價格",
+    ["Purchases whose mail invoice could not be read have no price: they count as zero, and the corner shows how many"] = "無法讀取郵件發票的購買沒有價格：以零計算，角落顯示其數量",
+    ["unknown"] = "未知",
+    ["The mail's invoice could not be read."] = "無法讀取郵件中的發票。",
 }
