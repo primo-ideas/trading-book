@@ -9,8 +9,20 @@ local UI = ns.UI
 -- window on a screen.
 local SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 120, 5
 
+-- The page where the player puts sections in an order of their own.
+local ORDER_MARGIN = 16
+local ORDER_TITLE_HEIGHT = 22
+local ORDER_ROW_HEIGHT = 24
+local ORDER_ARROW_SIZE = 20
+local ORDER_LIST_GAP = 18
+local ORDER_COLUMN_GAP = 24
+local ORDER_BUTTON_WIDTH, ORDER_BUTTON_HEIGHT = 170, 22
+-- The sort arrow of the auction house points down; flipped, it points up.
+local ARROW_ATLAS = "auctionhouse-ui-sortarrow"
+
 local category = nil
 local settings = {}
+local orderRefreshers = {}
 
 local function ScalePercent(scale)
     local percent = math.floor(scale * 100 / SCALE_STEP + 0.5) * SCALE_STEP
@@ -86,8 +98,156 @@ local function RegisterSettings()
         return ownScale:GetValue()
     end)
 
+    Settings.RegisterCanvasLayoutSubcategory(category, UI.CreateOrderPage(), L["Order"])
     Settings.RegisterAddOnCategory(category)
 end
+
+-- Order page ---------------------------------------------------------------------
+
+local function CreateArrow(parent, up, tooltip, onClick)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(ORDER_ARROW_SIZE, ORDER_ARROW_SIZE)
+    button.Icon = button:CreateTexture(nil, "ARTWORK")
+    button.Icon:SetAtlas(ARROW_ATLAS, true)
+    button.Icon:SetPoint("CENTER", button, "CENTER")
+    if up then
+        button.Icon:SetTexCoord(0, 1, 1, 0)
+    end
+    local hover = button:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints()
+    hover:SetColorTexture(1, 1, 1, 0.12)
+    button:SetScript("OnClick", onClick)
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(tooltip)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    return button
+end
+
+local function SetArrowEnabled(button, enabled)
+    button:SetEnabled(enabled)
+    button.Icon:SetAlpha(enabled and 1 or 0.25)
+end
+
+-- A list's title, then one row per item, with buttons to move it up or down.
+local function CreateOrderList(parent, list)
+    local box = CreateFrame("Frame", nil, parent)
+    box:SetHeight(ORDER_TITLE_HEIGHT + #list.items * ORDER_ROW_HEIGHT)
+    box.Title = box:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    box.Title:SetPoint("TOPLEFT", box, "TOPLEFT")
+    box.Title:SetText(list.title)
+
+    local rows = {}
+    for index = 1, #list.items do
+        local row = CreateFrame("Frame", nil, box)
+        local top = -ORDER_TITLE_HEIGHT - (index - 1) * ORDER_ROW_HEIGHT
+        row:SetPoint("TOPLEFT", box, "TOPLEFT", 0, top)
+        row:SetPoint("TOPRIGHT", box, "TOPRIGHT", 0, top)
+        row:SetHeight(ORDER_ROW_HEIGHT)
+        if index % 2 == 0 then
+            local stripe = row:CreateTexture(nil, "BACKGROUND")
+            stripe:SetAllPoints()
+            stripe:SetColorTexture(1, 1, 1, 0.04)
+        end
+        row.Down = CreateArrow(row, false, L["Move down"], function()
+            UI.MoveInOrder(list.kind, row.key, 1)
+        end)
+        row.Down:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        row.Up = CreateArrow(row, true, L["Move up"], function()
+            UI.MoveInOrder(list.kind, row.key, -1)
+        end)
+        row.Up:SetPoint("RIGHT", row.Down, "LEFT", -2, 0)
+        row.Label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        row.Label:SetPoint("LEFT", row, "LEFT", 6, 0)
+        row.Label:SetPoint("RIGHT", row.Up, "LEFT", -6, 0)
+        row.Label:SetJustifyH("LEFT")
+        row.Label:SetWordWrap(false)
+        rows[index] = row
+    end
+
+    table.insert(orderRefreshers, function()
+        local keys = UI.GetOrder(list.kind)
+        for index, row in ipairs(rows) do
+            row.key = keys[index]
+            row.Label:SetText(UI.GetOrderLabel(list.kind, row.key))
+            SetArrowEnabled(row.Up, index > 1)
+            SetArrowEnabled(row.Down, index < #keys)
+        end
+    end)
+    return box
+end
+
+local function RefreshOrderPage()
+    for _, refresh in ipairs(orderRefreshers) do
+        refresh()
+    end
+end
+
+-- A page of its own under Trading Book's: the longest list on the right, the others
+-- on the left, one under the other.
+function UI.CreateOrderPage()
+    local page = CreateFrame("Frame")
+    local title = page:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
+    title:SetPoint("TOPLEFT", page, "TOPLEFT", ORDER_MARGIN, -ORDER_MARGIN)
+    title:SetText(L["Order"])
+    local intro = page:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    intro:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    intro:SetPoint("RIGHT", page, "RIGHT", -ORDER_MARGIN, 0)
+    intro:SetJustifyH("LEFT")
+    intro:SetText(L["Put the window's tabs, the blocks of item tooltips and the Stats tiles in the order you like."])
+
+    local left = CreateFrame("Frame", nil, page)
+    left:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -ORDER_LIST_GAP)
+    left:SetPoint("RIGHT", page, "CENTER", -ORDER_COLUMN_GAP / 2, 0)
+    local right = CreateFrame("Frame", nil, page)
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", ORDER_COLUMN_GAP, 0)
+    right:SetPoint("RIGHT", page, "RIGHT", -ORDER_MARGIN, 0)
+
+    local lists = UI.GetOrderLists()
+    local longest = lists[1]
+    for _, list in ipairs(lists) do
+        if #list.items > #longest.items then
+            longest = list
+        end
+    end
+    local leftHeight, rightHeight = 0, 0
+    for _, list in ipairs(lists) do
+        local box = CreateOrderList(page, list)
+        if list == longest then
+            box:SetPoint("TOPLEFT", right, "TOPLEFT", 0, -rightHeight)
+            box:SetPoint("TOPRIGHT", right, "TOPRIGHT", 0, -rightHeight)
+            rightHeight = rightHeight + box:GetHeight() + ORDER_LIST_GAP
+        else
+            box:SetPoint("TOPLEFT", left, "TOPLEFT", 0, -leftHeight)
+            box:SetPoint("TOPRIGHT", left, "TOPRIGHT", 0, -leftHeight)
+            leftHeight = leftHeight + box:GetHeight() + ORDER_LIST_GAP
+        end
+    end
+    left:SetHeight(math.max(leftHeight, rightHeight))
+    right:SetHeight(math.max(leftHeight, rightHeight))
+
+    local reset = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    reset:SetSize(ORDER_BUTTON_WIDTH, ORDER_BUTTON_HEIGHT)
+    reset:SetPoint("TOPLEFT", left, "BOTTOMLEFT", 0, 0)
+    reset:SetText(L["Default order"])
+    reset:SetScript("OnClick", UI.ResetOrders)
+    table.insert(orderRefreshers, function()
+        reset:SetEnabled(ns.db.ui.order ~= nil)
+    end)
+
+    -- Called by the options panel: its Defaults button, and each time the page shows.
+    page.OnDefault = UI.ResetOrders
+    page.OnRefresh = RefreshOrderPage
+    page:SetScript("OnShow", RefreshOrderPage)
+    RefreshOrderPage()
+    return page
+end
+
+ns.Subscribe("ORDER_CHANGED", RefreshOrderPage)
 
 -- Shows a change made elsewhere, such as by a slash command, if the page is open.
 function UI.RefreshSettings()

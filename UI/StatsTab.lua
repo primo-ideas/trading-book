@@ -22,8 +22,14 @@ local TILES = {
     { key = "goldChange", label = L["Gold change"], icon = "Interface\\Icons\\Achievement_GuildPerk_CashFlow" },
 }
 
+-- The player can put the tiles in an order of their own.
+local tileOrder = UI.RegisterOrder("tiles", L["Stats tiles"])
+for _, spec in ipairs(TILES) do
+    table.insert(tileOrder, { key = spec.key, label = spec.label })
+end
+
 local period = 30
-local tiles, chart, itemsTable = nil, nil, nil
+local tiles, tilesPane, chart, itemsTable = nil, nil, nil, nil
 
 local function BuildItemRows(summary)
     local rows = {}
@@ -72,7 +78,8 @@ UI.RegisterTab({
         segments:SetPoint("LEFT", toolbar, "LEFT")
 
         local tilesHeight
-        tiles, tilesHeight = UI.CreateTiles(pane, TILES, TILES_PER_ROW)
+        tiles, tilesHeight = UI.CreateTiles(pane, TILES, TILES_PER_ROW, UI.GetOrder("tiles"))
+        tilesPane = pane
 
         local chartTop = -tilesHeight - UI.GAP
         chart = UI.CreateBarChart(pane, UI.CONTENT_WIDTH, CHART_HEIGHT)
@@ -100,3 +107,9 @@ UI.RegisterTab({
     end,
     Refresh = Refresh,
 })
+
+ns.Subscribe("ORDER_CHANGED", function()
+    if tiles then
+        UI.ArrangeTiles(tilesPane, tiles, UI.GetOrder("tiles"), TILES_PER_ROW)
+    end
+end)

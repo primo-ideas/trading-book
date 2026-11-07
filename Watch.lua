@@ -99,10 +99,21 @@ function Watch.Set(itemID, direction, price, link)
         watched = nil
     end
     ns.db.watch[itemID] = watched
+    ns.Publish("WATCH_CHANGED")
 end
 
 function Watch.Remove(itemID)
     ns.db.watch[itemID] = nil
+    ns.Publish("WATCH_CHANGED")
+end
+
+-- Every watched item, as { itemID, below, above, link }.
+function Watch.GetAll()
+    local items = {}
+    for itemID, watched in pairs(ns.db.watch) do
+        table.insert(items, { itemID = itemID, below = watched.below, above = watched.above, link = watched.link })
+    end
+    return items
 end
 
 -- Commands -------------------------------------------------------------------------

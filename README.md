@@ -28,7 +28,9 @@ The installed folder is replaced every time, so keep nothing in it. Saved data l
 
 Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it back.
 
-Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get a Trading Book section: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Without a price from Auctionator, which shows its own, the section also gives the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. Nothing is added for an item that has none of these, nor in Trading Book's own window, which already shows the same. `/tradingbook tooltip` hides the section or brings it back.
+Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get Trading Book's lines, together at the bottom and without a title, to save room: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Without a price from Auctionator, which shows its own, they also give the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. A watched item also shows its price targets. Nothing is added for an item that has none of these, nor in Trading Book's own windows, which already show the same. `/tradingbook tooltip` hides the lines or brings them back.
+
+The auction house window gets a Trading Book tab, after its own: when the auction house was last scanned and when the game allows the next scan, a button to scan it, your undercut auctions with the cheaper price on sale, and the watched items with their targets and the lowest price on sale, in green when a target is reached.
 
 When Auctionator is not installed, or has no prices, Trading Book scans the auction house itself when it opens: one request reads every auction of the realm, at most every 15 minutes, as the game allows. `/tradingbook scan` starts a scan by hand, even with Auctionator. When another addon, such as Auctionator with its full scan, scans the whole auction house, Trading Book reads the same answer without asking again. Each item keeps its lowest buyout per unit and the quantity on sale. Connected realms share their prices, which are kept 30 days after the item was last seen. The items your account holds or traded also keep one price a day for 30 days, which gives the change shown in their tooltip.
 
@@ -41,11 +43,13 @@ The settings are in the game's options, under AddOns > Trading Book. A right-cli
 | Setting | Effect |
 | --- | --- |
 | **Minimap icon** | Shows or hides the icon, like `/tradingbook minimap`. |
-| **Item tooltips** | Adds the Trading Book section to item tooltips or not, like `/tradingbook tooltip`. |
+| **Item tooltips** | Adds Trading Book's lines to item tooltips or not, like `/tradingbook tooltip`. |
 | **Mail summary** | Sums up the collected auction house mail in the chat when you leave the mailbox. |
 | **Scan the auction house** | Scans it when it opens, unless Auctionator already prices some of the account's items. `/tradingbook scan` still works when this is off. |
 | **Custom window scale** | Gives the window a scale of its own, which replaces the game's UI scale: the window then keeps its size when the game's scale changes. Turned on, it starts from the game's current scale, so nothing moves yet. Turned off, the window follows the game's scale again. |
 | **Window scale** | That scale, from 50% to 120% in steps of 5%, in the same percent as the game's UI scale. Greyed out while the window follows the game. The window stays centred on the same spot when it changes. |
+
+The **Order** page, under Trading Book in the same options, puts three things in the order you like, with arrows to move each item up or down: the window's tabs, the first of which is the one the window opens on, the blocks of item tooltips (stock, auction house price, price targets, sales), and the tiles of the Stats tab. The window follows at once, even open. **Default order**, or the options' Defaults button, brings back the original order.
 
 | Tab | Content |
 | --- | --- |
@@ -92,6 +96,7 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 - After an interrupted multi-post, the listed quantity stays the one first requested.
 - The cost of crafting an item is not known: profit only counts auction house purchases.
 - The icon follows a circle around the minimap: on a square minimap (ElvUI, for example), it does not reach the corners.
+- Trading Book adds its tooltip lines after the other addons that use the game's tooltip calls, but an addon that adds its own once the tooltip is filled still puts them after Trading Book's.
 
 ## Check in game
 
@@ -105,9 +110,11 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 6. **Cancellation**: the cost is filled in.
 7. **Warband bank**: its content and gold appear when the bank opens.
 8. **Full mailbox**: a collection that fails on full bags, then succeeds, only counts once.
-9. **Item tooltips**: the section appears on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's window nor on the comparison tooltips, and hovering an item in combat raises no error.
+9. **Item tooltips**: the lines appear at the bottom, with no title, on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's windows nor on the comparison tooltips, and hovering an item in combat raises no error.
 10. **Auction house scan**: the request is answered by `REPLICATE_ITEM_LIST_UPDATE`, indexes start at 0, the buyout covers the whole stack, the game does not freeze or disconnect while it is read, a request within 15 minutes is refused without harm, and the prices match those of the auction house. An Auctionator full scan is read by Trading Book too, without a second request, and the game stays smooth while both addons read it. Undercut auctions are the ones the auction house shows beaten, which relies on the price of an owned commodity auction being per unit.
 11. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
+12. **Order page**: it appears under Trading Book in the AddOns options, its arrows and labels fit, the options' Defaults button resets it, and after a change the window's selected tab is still the one highlighted, which relies on the tab templates finding tabs by their rank in `frame.Tabs`.
+13. **Auction house tab**: it sits after the game's tabs, and after Auctionator's without overlapping them. Its panel covers the auction house's content, sized from an 800 by 538 window, below the title bar, and clicking a game tab, even the one selected before, brings the game's content and highlight back. The status counts down to the next scan and the button scans.
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
 
@@ -152,6 +159,6 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Stats.lua` | Statistics and price estimates |
 | `Market.lua` | Auction house scan and the prices it keeps |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
-| `UI/` | Window, tables, tabs and item tooltips |
+| `UI/` | Window, tables, tabs, settings and their order page, item tooltips and the auction house tab |
 | `tests/` | Fake client and tests |
 | `install.ps1`, `.pkgmeta` | Local install and CurseForge package |

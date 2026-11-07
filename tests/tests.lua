@@ -2101,8 +2101,7 @@ test("an item's tooltip shows the account's stock, by character and place", func
         auctions = { { auctionID = 7, itemID = 1001, qty = 3, expiresAt = world.now + 3600 } },
     }
     local text = hoverItem(1001)
-    eq(has(text, "Trading Book"), true, "a header: " .. text)
-    eq(has(text, "Stock=78"), true, "the account total")
+    eq(GameTooltip.lines[1], "Stock=78", "the account total first, with no title to save room: " .. text)
     eq(has(text, "Primo|r=Bags 10, Bank 20"), true, "the player, by place")
     eq(has(text, "Alt|r=Mail 5, AH 3"), true, "an alt, auctions included")
     eq(has(text, "Warband bank=40"), true, "the warband bank")
@@ -2149,7 +2148,6 @@ test("the window's own item tooltips do not get the lines twice", function()
     GameTooltip.lines = {}
     row.scripts.OnEnter(row)
     local text = table.concat(GameTooltip.lines, "\n")
-    eq(has(text, "Trading Book"), false, "no extra section: " .. text)
     local _, count = text:gsub("Bags 10, Bank 20", "")
     eq(count, 1, "holdings listed once")
 end)
@@ -2385,7 +2383,7 @@ test("without Auctionator, item tooltips give the auction house price, its age a
     answerScan({ auction(4242, 1, 300) })
     world.now = world.now + 2 * 3600
     local text = hoverItem(4242)
-    eq(has(text, "Trading Book"), true, "even for an item neither held nor sold: " .. text)
+    eq(text ~= "", true, "even for an item neither held nor sold")
     eq(has(text, "AH price (2 h ago)=300c"), true, "price and age")
     eq(has(text, "On the AH=1"), true, "quantity on sale")
     eq(has(text, "Change since 11/05=+20.0%"), true, "change since a week ago")
@@ -2887,6 +2885,320 @@ layoutTest("layout: the count of unpriced purchases stays clear of its tile's la
         end
     end
     eq(checked, 1, "the purchases tile")
+end)
+
+-- Section order --------------------------------------------------------------------
+
+local function orderText(ns, kind)
+    return table.concat(ns.UI.GetOrder(kind), ",")
+end
+
+-- The rows of the order page, by list title then rank. Each has Label, Up and Down.
+local function orderRows(page)
+    local lists = {}
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "frame" and rawget(object, "Up") and Mock.IsWithin(object, page) then
+            local title = rawget(object, "parent").Title:GetText()
+            lists[title] = lists[title] or {}
+            table.insert(lists[title], object)
+        end
+    end
+    return lists
+end
+
+local function frameWithin(template, ancestor)
+    for _, frame in ipairs(Mock.FindFrames(template)) do
+        if Mock.IsWithin(frame, ancestor) then
+            return frame
+        end
+    end
+end
+
+test("an order keeps the known keys, drops the others, and gives new ones their default rank", function()
+    local ns = Mock.Boot()
+    eq(orderText(ns, "tabs"), "auctions,stock,stats,gold", "the default")
+    eq(orderText(ns, "tooltip"), "stock,market,watch,sales")
+    eq(orderText(ns, "tiles"), "net,sales,spent,fees,sellThrough,stockValue,gold,goldChange")
+
+    TradingBookDB.ui.order = { tabs = { "gold", "gone", "stats", "gold" } }
+    eq(orderText(ns, "tabs"), "auctions,stock,gold,stats")
+
+    eq(ns.UI.MoveInOrder("tabs", "stats", -1), true)
+    eq(orderText(ns, "tabs"), "auctions,stock,stats,gold")
+    eq(TradingBookDB.ui.order, nil, "the default order saves nothing")
+    eq(ns.UI.MoveInOrder("tabs", "auctions", -1), false, "already first")
+    eq(ns.UI.MoveInOrder("tabs", "gold", 1), false, "already last")
+    eq(ns.UI.MoveInOrder("tabs", "unknown", 1), false)
+end)
+
+test("the settings have a page to put the tabs, tooltip blocks and Stats tiles in order", function()
+    local ns = Mock.Boot()
+    local page = Mock.SettingsSubpage("Order")
+    local lists = orderRows(page)
+    local tabs = lists["Window tabs"]
+    eq(#tabs, 4)
+    eq(#lists["Item tooltips"], 4)
+    eq(#lists["Stats tiles"], 8)
+    eq(lists["Item tooltips"][2].Label:GetText(), "Auction house price")
+    eq(lists["Stats tiles"][8].Label:GetText(), "Gold change")
+
+    eq(tabs[1].Label:GetText(), "Auctions")
+    eq(tabs[1].Up.enabled, false, "the first cannot go up")
+    eq(tabs[4].Down.enabled, false, "the last cannot go down")
+    tabs[1].Down.scripts.OnClick(tabs[1].Down)
+    eq(tabs[1].Label:GetText(), "Stock")
+    eq(tabs[2].Label:GetText(), "Auctions")
+    eq(tabs[1].Up.enabled, false)
+    eq(tabs[2].Up.enabled, true)
+    eq(orderText(ns, "tabs"), "stock,auctions,stats,gold", "saved")
+
+    local reset = frameWithin("UIPanelButtonTemplate", page)
+    eq(reset:GetText(), "Default order")
+    eq(reset.enabled, true)
+    reset.scripts.OnClick(reset)
+    eq(tabs[1].Label:GetText(), "Auctions")
+    eq(reset.enabled, false, "nothing left to reset")
+    eq(TradingBookDB.ui.order, nil)
+
+    lists["Stats tiles"][3].Up.scripts.OnClick(lists["Stats tiles"][3].Up)
+    page.OnDefault()
+    eq(orderText(ns, "tiles"), "net,sales,spent,fees,sellThrough,stockValue,gold,goldChange",
+        "the options panel's Defaults button")
+end)
+
+test("the window's tabs follow the order, and the first one opens first", function()
+    local ns = Mock.Boot()
+    ns.UI.MoveInOrder("tabs", "stats", -1)
+    ns.UI.MoveInOrder("tabs", "stats", -1)
+    SlashCmdList.TRADINGBOOK("")
+    local frame = TradingBookMainFrame
+    eq(frame.Tabs[1]:GetText(), "Stats")
+    eq(frame.Tabs[2]:GetText(), "Auctions")
+    eq(frame.selectedTab, 1, "the first tab opens first")
+    eq(Mock.Rect(frame.Tabs[1]).right < Mock.Rect(frame.Tabs[2]).left, true, "side by side, in order")
+
+    frame.Tabs[2].scripts.OnClick(frame.Tabs[2])
+    eq(frame.selectedTab, 2)
+    ns.UI.MoveInOrder("tabs", "auctions", -1)
+    eq(frame.Tabs[1]:GetText(), "Auctions", "the open window follows")
+    eq(frame.selectedTab, 1, "the selected tab stays selected at its new rank")
+    eq(Mock.Rect(frame.Tabs[1]).right < Mock.Rect(frame.Tabs[2]).left, true)
+
+    SlashCmdList.TRADINGBOOK("gold")
+    eq(frame.selectedTab, 4, "commands open a tab by name, wherever it stands")
+end)
+
+test("the Stats tiles follow the order, in the open window too", function()
+    local ns = Mock.Boot()
+    local tiles = {}
+    local createTile = ns.UI.CreateTile
+    ns.UI.CreateTile = function(parent, spec, width)
+        tiles[spec.key] = createTile(parent, spec, width)
+        return tiles[spec.key]
+    end
+    ns.UI.MoveInOrder("tiles", "spent", -1)
+    ns.UI.MoveInOrder("tiles", "spent", -1)
+    ns.UI.Open("stats")
+    local first, second = Mock.Rect(tiles.net), Mock.Rect(tiles.spent)
+    eq(second.left < first.left, true, "purchases before net profit")
+    near(second.top, first.top, 0.01, "on the same row")
+
+    ns.UI.MoveInOrder("tiles", "goldChange", -1)
+    local gold, change = Mock.Rect(tiles.gold), Mock.Rect(tiles.goldChange)
+    eq(change.left < gold.left, true, "rearranged in the open window")
+end)
+
+test("item tooltips have no title, and their blocks follow the order", function()
+    local ns = Mock.Boot()
+    Mock.SetBagItem(0, 1, 1001, "Herb", 10)
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 1, gross = 100 })
+    local text = hoverItem(1001)
+    eq(GameTooltip.lines[1], "Stock=10", "no title nor blank line: " .. text)
+    eq(text:find("Stock=", 1, true) < text:find("Last sale", 1, true), true, text)
+
+    for _ = 1, 3 do
+        ns.UI.MoveInOrder("tooltip", "sales", -1)
+    end
+    text = hoverItem(1001)
+    eq(text:find("Last sale", 1, true) < text:find("Stock=", 1, true), true, "sales first: " .. text)
+end)
+
+layoutTest("layout: the order page fits its labels and the options panel", function()
+    local ns = Mock.Boot({ locale = layoutLocale })
+    local page = Mock.SettingsSubpage(ns.L["Order"])
+    local bounds = Mock.Rect(page)
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and Mock.IsWithin(object, page) and object.text ~= "" then
+            local rect = Mock.Rect(object)
+            eq(rect.left >= bounds.left and rect.right <= bounds.right + 0.01 and rect.bottom >= bounds.bottom,
+                true, "outside the page: " .. describe(object, rect))
+            if rawget(rawget(object, "parent"), "Up") then
+                eq(object:GetStringWidth() <= rect.right - rect.left + 0.01, true,
+                    ("label cut: %q"):format(object.text))
+            end
+        end
+    end
+    local reset = frameWithin("UIPanelButtonTemplate", page)
+    eq(reset:GetStringWidth() <= reset.width - 16, true, "button text: " .. reset:GetText())
+    eq(Mock.Rect(reset).bottom >= bounds.bottom, true, "the button fits")
+end)
+
+-- Auction house tab -------------------------------------------------------------------
+
+-- The panel the Trading Book tab shows over the auction house's content.
+local function auctionHousePanel(ah)
+    for _, object in ipairs(Mock.Objects()) do
+        if rawget(object, "parent") == ah and object.frameType == "Frame" then
+            return object
+        end
+    end
+end
+
+-- The two status lines at the top of the panel, and its scan button.
+local function auctionHouseStatus(panel)
+    local lastScan, state
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and rawget(object, "parent") == panel then
+            if object.font == "GameFontHighlight" then
+                lastScan = object
+            elseif object.font == "GameFontHighlightSmall" then
+                state = object
+            end
+        end
+    end
+    return lastScan:GetText(), state:GetText(), frameWithin("UIPanelButtonTemplate", panel)
+end
+
+test("the auction house window gets a Trading Book tab after its own", function()
+    Mock.Boot()
+    local ah = Mock.LoadAuctionHouseUI()
+    eq(#ah.Tabs, 4)
+    local tab = ah.Tabs[4]
+    eq(tab, TradingBookAuctionHouseTab)
+    eq(tab:GetText(), "Trading Book")
+    eq(ah.numTabs, 4)
+    near(Mock.Rect(tab).left, Mock.Rect(ah.Tabs[3]).right + 3, 0.01, "after the last tab")
+
+    local panel = auctionHousePanel(ah)
+    eq(panel:IsShown(), false, "until the tab is clicked")
+    tab.scripts.OnClick(tab)
+    eq(panel:IsShown(), true)
+    eq(ah.selectedTab, 4)
+    near(Mock.Rect(panel).top, Mock.Rect(ah).top - 26, 0.01, "below the title bar")
+
+    ah.Tabs[1].scripts.OnClick(ah.Tabs[1])
+    eq(panel:IsShown(), false, "the game's tab takes over")
+    eq(ah.selectedTab, 1)
+
+    tab.scripts.OnClick(tab)
+    PanelTemplates_SetTab(ah, 5)
+    eq(panel:IsShown(), false, "another addon's tab too")
+
+    tab.scripts.OnClick(tab)
+    ah.scripts.OnHide(ah)
+    eq(panel:IsShown(), false, "closing the auction house")
+end)
+
+test("the auction house tab shows the scan, the undercut auctions and the watched items", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    ns.RememberItem(1001, "Herb", 1, 1)
+    ns.RememberItem(1002, "Ore", 1, 1)
+    setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100), liveAuction(world, 2, 1002, 40) })
+    SlashCmdList.TRADINGBOOK("watch Ore 1g")
+    SlashCmdList.TRADINGBOOK("watch Herb above 5g")
+    local ah = Mock.LoadAuctionHouseUI()
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90), auction(1002, 1, 40) })
+    ah.Tabs[4].scripts.OnClick(ah.Tabs[4])
+    local panel = auctionHousePanel(ah)
+
+    local lastScan, state, button = auctionHouseStatus(panel)
+    eq(lastScan, "Last scan: 11/05 12:00")
+    eq(state, "Next scan in 15 min")
+    eq(button:GetText(), "Scan the auction house")
+    eq(button.enabled, false, "the game would refuse it")
+
+    local undercut, watched = tables[1], tables[2]
+    eq(#undercut.rows, 1, "only the beaten auction")
+    eq(undercut.rows[1].itemID, 1001)
+    eq(undercut.rows[1].lowest, 90)
+    eq(undercut.rows[1].char, "Primo-Hyjal")
+    eq(#watched.rows, 2)
+    local byItem = {}
+    for _, row in ipairs(watched.rows) do
+        byItem[row.itemID] = row
+    end
+    eq(byItem[1002].price, 40)
+    eq(byItem[1002].reached, true, "below its buy target")
+    eq(byItem[1001].reached, false, "below its sell target")
+
+    world.now = world.now + 15 * 60
+    panel.scripts.OnUpdate(panel, 1)
+    lastScan, state, button = auctionHouseStatus(panel)
+    eq(state, "Ready to scan", "the wait counts down while the panel shows")
+    eq(button.enabled, true)
+    button.scripts.OnClick(button)
+    eq(world.replicateRequests, 2)
+    lastScan, state, button = auctionHouseStatus(panel)
+    eq(state, "Scanning the auction house...")
+    eq(button.enabled, false)
+
+    SlashCmdList.TRADINGBOOK("unwatch Ore")
+    eq(#watched.rows, 1, "the list follows the watch commands")
+end)
+
+test("the auction house tab's item tooltips do not get the lines twice", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    ns.RememberItem(1001, "Herb", 1, 1)
+    Mock.SetBagItem(0, 1, 1001, "Herb", 10)
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    eq(has(hoverItem(1001), "Stock=10"), true, "elsewhere, the item gets the lines")
+    setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100) })
+    local ah = Mock.LoadAuctionHouseUI()
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90) })
+    ah.Tabs[4].scripts.OnClick(ah.Tabs[4])
+    local row = tables[1].ScrollBox.rendered[1]
+    GameTooltip.lines = {}
+    row.scripts.OnEnter(row)
+    local text = table.concat(GameTooltip.lines, "\n")
+    eq(has(text, "Stock="), false, "the panel is one of Trading Book's own: " .. text)
+    eq(has(text, "Lowest on the AH=90c"), true, text)
+end)
+
+layoutTest("layout: the auction house tab fits its texts", function()
+    local ns = layoutFixture()
+    local tables = captureTables(ns)
+    local ah = Mock.LoadAuctionHouseUI()
+    openAuctionHouse()
+    ah.Tabs[4].scripts.OnClick(ah.Tabs[4])
+    local panel = auctionHousePanel(ah)
+    local bounds = Mock.Rect(panel)
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and rawget(object, "parent") == panel then
+            local rect = Mock.Rect(object)
+            eq(rect.left >= bounds.left and rect.right <= bounds.right, true, "outside the panel: " .. describe(object, rect))
+            eq(object:GetStringWidth() <= rect.right - rect.left + 0.01, true, ("cut: %q"):format(object.text))
+        end
+    end
+    eq(#tables, 2)
+    for _, tbl in ipairs(tables) do
+        local list = Mock.Rect(tbl.ScrollBox)
+        eq(Mock.Rect(tbl).bottom >= bounds.bottom - 0.01, true, "table below the panel")
+        for _, column in ipairs(tbl.columns) do
+            local header, title = Mock.Rect(column.header), Mock.Rect(column.header.Text)
+            eq(header.right <= list.right - 2, true, ("column %s runs into the scroll bar"):format(column.key))
+            eq(title.left >= header.left - 0.01 and title.right <= header.right + 0.01, true,
+                ("title too wide for column %s: %q"):format(column.key, column.header.Text:GetText()))
+        end
+    end
+    local _, _, button = auctionHouseStatus(panel)
+    eq(button:GetStringWidth() <= button.width - 16, true, "button text: " .. button:GetText())
 end)
 
 -- Settings ---------------------------------------------------------------------
