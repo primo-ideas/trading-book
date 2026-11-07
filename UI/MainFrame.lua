@@ -18,24 +18,58 @@ UI.CONTENT_WIDTH = WIDTH - INSET_LEFT - INSET_RIGHT - 2 * UI.PADDING
 UI.CONTENT_HEIGHT = HEIGHT - INSET_TOP - INSET_BOTTOM - 2 * UI.PADDING
 
 -- Tabs register themselves when their file loads; panes are only built on first show.
+-- The player can put them in an order of their own, and the first one opens first.
 local tabs = {}
+local tabOrder = UI.RegisterOrder("tabs", L["Window tabs"])
 local frame = nil
-local selectedTab = 1
+local selectedKey = nil
 local selectedCharacter = nil
+-- Frames whose item tooltips already show what Trading Book knows of the item.
+local ownFrames = {}
 
 -- tab: { key, title, Build = fn(pane, toolbar), Refresh = fn() }
 function UI.RegisterTab(tab)
     table.insert(tabs, tab)
+    table.insert(tabOrder, { key = tab.key, label = tab.title })
+end
+
+local function FindTab(key)
+    for _, tab in ipairs(tabs) do
+        if tab.key == key then
+            return tab
+        end
+    end
+end
+
+-- The tabs in the player's order.
+local function OrderedTabs()
+    local ordered = {}
+    for index, key in ipairs(UI.GetOrder("tabs")) do
+        ordered[index] = FindTab(key)
+    end
+    return ordered
+end
+
+local function TabIndex(key)
+    for index, tab in ipairs(OrderedTabs()) do
+        if tab.key == key then
+            return index
+        end
+    end
 end
 
 function UI.GetCharacterFilter()
     return selectedCharacter
 end
 
--- Whether a frame is part of the window, such as one of its table rows.
+function UI.AddOwnFrame(ownFrame)
+    ownFrames[ownFrame] = true
+end
+
+-- Whether a frame is part of Trading Book's own windows, such as one of its table rows.
 function UI.IsOwnFrame(object)
     while object do
-        if object == frame then
+        if ownFrames[object] then
             return true
         end
         object = object:GetParent()
@@ -45,15 +79,15 @@ end
 
 local function RefreshSelected()
     if frame and frame:IsShown() then
-        tabs[selectedTab].Refresh()
+        FindTab(selectedKey).Refresh()
     end
 end
 
-local function SelectTab(index)
-    selectedTab = index
-    PanelTemplates_SetTab(frame, index)
-    for i, tab in ipairs(tabs) do
-        local selected = i == index
+local function SelectTab(key)
+    selectedKey = key
+    PanelTemplates_SetTab(frame, TabIndex(key))
+    for _, tab in ipairs(tabs) do
+        local selected = tab.key == key
         if selected and not tab.built then
             tab.Build(tab.pane, tab.toolbar)
             tab.built = true
@@ -62,6 +96,29 @@ local function SelectTab(index)
         tab.toolbar:SetShown(selected)
     end
     RefreshSelected()
+end
+
+-- Lines the tab buttons up in the player's order. The panel templates find a tab
+-- by its rank in frame.Tabs.
+local function ArrangeTabs()
+    frame.Tabs = {}
+    local previous
+    for index, tab in ipairs(OrderedTabs()) do
+        local button = tab.button
+        button:SetID(index)
+        button:ClearAllPoints()
+        if previous then
+            button:SetPoint("LEFT", previous, "RIGHT", 3, 0)
+        else
+            button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 11, 2)
+        end
+        frame.Tabs[index] = button
+        previous = button
+    end
+    PanelTemplates_SetNumTabs(frame, #tabs)
+    if selectedKey then
+        PanelTemplates_SetTab(frame, TabIndex(selectedKey))
+    end
 end
 
 local function SavePosition()
@@ -160,6 +217,7 @@ end
 
 local function CreateMainFrame()
     frame = CreateFrame("Frame", "TradingBookMainFrame", UIParent, "ButtonFrameTemplate")
+    UI.AddOwnFrame(frame)
     frame:SetSize(WIDTH, HEIGHT)
     frame:SetScale(FrameScale())
     frame:SetFrameStrata("HIGH")
@@ -181,20 +239,13 @@ local function CreateMainFrame()
     table.insert(UISpecialFrames, "TradingBookMainFrame")
     CreateCharacterDropdown()
 
-    local previous
     for index, tab in ipairs(tabs) do
         local button = CreateFrame("Button", "TradingBookMainFrameTab" .. index, frame, "PanelTabButtonTemplate")
-        button:SetID(index)
         button:SetText(tab.title)
-        if previous then
-            button:SetPoint("LEFT", previous, "RIGHT", 3, 0)
-        else
-            button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 11, 2)
-        end
         button:SetScript("OnClick", function()
-            SelectTab(index)
+            SelectTab(tab.key)
         end)
-        previous = button
+        tab.button = button
 
         tab.toolbar = CreateFrame("Frame", nil, frame)
         tab.toolbar:SetPoint("TOPLEFT", frame, "TOPLEFT", TOOLBAR_LEFT, TOOLBAR_TOP)
@@ -206,10 +257,10 @@ local function CreateMainFrame()
         tab.pane:SetPoint("BOTTOMRIGHT", frame.Inset, "BOTTOMRIGHT", -UI.PADDING, UI.PADDING)
         tab.pane:Hide()
     end
-    PanelTemplates_SetNumTabs(frame, #tabs)
+    ArrangeTabs()
 
     frame:SetScript("OnShow", RefreshSelected)
-    SelectTab(selectedTab)
+    SelectTab(selectedKey or UI.GetOrder("tabs")[1])
 end
 
 function UI.Toggle()
@@ -221,17 +272,15 @@ function UI.Toggle()
 end
 
 function UI.Open(tabKey)
-    for index, tab in ipairs(tabs) do
-        if tab.key == tabKey then
-            selectedTab = index
-        end
+    if FindTab(tabKey) then
+        selectedKey = tabKey
     end
     if not frame then
         CreateMainFrame()
         return
     end
     -- In this order: showing refreshes the selected tab, which must be built by then.
-    SelectTab(selectedTab)
+    SelectTab(selectedKey or UI.GetOrder("tabs")[1])
     frame:Show()
 end
 
@@ -245,3 +294,9 @@ ns.Subscribe("LEDGER_CHANGED", RequestRefresh)
 ns.Subscribe("AUCTIONS_CHANGED", RequestRefresh)
 ns.Subscribe("STOCK_CHANGED", RequestRefresh)
 ns.Subscribe("MARKET_CHANGED", RequestRefresh)
+
+ns.Subscribe("ORDER_CHANGED", function()
+    if frame then
+        ArrangeTabs()
+    end
+end)

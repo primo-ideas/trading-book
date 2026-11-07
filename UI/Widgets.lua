@@ -194,20 +194,36 @@ function UI.CreateTile(parent, spec, width)
     return tile
 end
 
--- Lays tiles out in rows across the content, starting at the top of the parent.
--- Returns them by key, with the height they took.
-function UI.CreateTiles(parent, specs, perRow)
-    local width = (UI.CONTENT_WIDTH - (perRow - 1) * UI.GAP) / perRow
-    local tiles = {}
-    for index, spec in ipairs(specs) do
+local function TileWidth(perRow)
+    return (UI.CONTENT_WIDTH - (perRow - 1) * UI.GAP) / perRow
+end
+
+-- Places tiles in rows across the content, from the top of the parent, in the order
+-- of keys. Returns the height they take.
+function UI.ArrangeTiles(parent, tiles, keys, perRow)
+    local width = TileWidth(perRow)
+    for index, key in ipairs(keys) do
         local column = (index - 1) % perRow
         local row = math.floor((index - 1) / perRow)
-        local tile = UI.CreateTile(parent, spec, width)
+        local tile = tiles[key]
+        tile:ClearAllPoints()
         tile:SetPoint("TOPLEFT", parent, "TOPLEFT", column * (width + UI.GAP), -row * (UI.TILE_HEIGHT + UI.GAP))
-        tiles[spec.key] = tile
     end
-    local rows = math.ceil(#specs / perRow)
-    return tiles, rows * UI.TILE_HEIGHT + (rows - 1) * UI.GAP
+    local rows = math.ceil(#keys / perRow)
+    return rows * UI.TILE_HEIGHT + (rows - 1) * UI.GAP
+end
+
+-- Lays tiles out in rows across the content, starting at the top of the parent.
+-- keys gives their order, the order of specs by default. Returns them by key, with
+-- the height they took.
+function UI.CreateTiles(parent, specs, perRow, keys)
+    local tiles = {}
+    local defaultKeys = {}
+    for index, spec in ipairs(specs) do
+        tiles[spec.key] = UI.CreateTile(parent, spec, TileWidth(perRow))
+        defaultKeys[index] = spec.key
+    end
+    return tiles, UI.ArrangeTiles(parent, tiles, keys or defaultKeys, perRow)
 end
 
 -- Filters -------------------------------------------------------------------

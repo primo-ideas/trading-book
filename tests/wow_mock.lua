@@ -12,16 +12,18 @@ local allowedGlobals = {
     -- Written by the addon.
     TradingBook = true, TradingBookDB = true, SLASH_TRADINGBOOK1 = true,
     TradingBook_OnAddonCompartmentClick = true, TradingBookMainFrame = true,
-    TradingBookMinimapButton = true, TradingBookExportFrame = true,
+    TradingBookMinimapButton = true, TradingBookExportFrame = true, TradingBookAuctionHouseTab = true,
     -- Optional dependency, nil when not installed.
     Auctionator = true,
+    -- The game's auction house window, nil until its addon loads.
+    AuctionHouseFrame = true,
 }
 
 -- Methods the addon calls whose effect does not matter here.
 local NO_OP_METHODS = {
     "SetFrameStrata", "SetToplevel", "SetMovable", "SetClampedToScreen", "EnableMouse",
     "RegisterForDrag", "StartMoving", "StopMovingOrSizing", "SetID", "SetTitle",
-    "SetWordWrap", "SetAutoFocus", "SetFixedFrameStrata", "SetFrameLevel",
+    "SetWordWrap", "SetAutoFocus", "SetFixedFrameStrata",
     "SetFixedFrameLevel", "RegisterForClicks", "SetHighlightTexture",
     "LockHighlight", "UnlockHighlight", "SetThickness", "SetPortraitToAsset",
     "SetMultiLine", "SetMaxLetters", "SetFontObject", "ClearFocus",
@@ -133,6 +135,8 @@ end
 function Object:SetJustifyH(justify) self.justify = justify end
 function Object:SetAlpha(alpha) self.alpha = alpha end
 function Object:SetEnabled(enabled) self.enabled = enabled end
+function Object:SetFrameLevel(level) self.frameLevel = level end
+function Object:GetFrameLevel() return rawget(self, "frameLevel") or 1 end
 function Object:SetStartPoint(_, relativeTo, x, y) self.lineStart = { relativeTo = relativeTo, x = x, y = y } end
 function Object:SetEndPoint(_, relativeTo, x, y) self.lineEnd = { relativeTo = relativeTo, x = x, y = y } end
 
@@ -332,6 +336,10 @@ local TEMPLATES = {
         frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 26)
     end,
     PanelTabButtonTemplate = TabTemplate,
+    -- Its label uses GameFontNormal.
+    UIPanelButtonTemplate = function(frame)
+        frame.font = "GameFontNormal"
+    end,
     SearchBoxTemplate = true,
     WowStyle1DropdownTemplate = function(frame)
         frame.width, frame.height = 150, 25
@@ -537,6 +545,18 @@ local function InstallApi()
         CreateSlider = function(category, setting, options, tooltip)
             assert(setting:GetVariableType() == "number" and options ~= nil)
             return AddControl(category, "slider", setting, options, tooltip)
+        end,
+        -- The options panel sizes a canvas page to its content area, about this big.
+        RegisterCanvasLayoutSubcategory = function(category, frame, name)
+            assert(category and category.controls, "RegisterCanvasLayoutSubcategory needs a category")
+            assert(frame and type(name) == "string")
+            assert(not category.registered, "Subcategory added after the category was registered")
+            frame.rect = { left = 300, right = 900, top = 900, bottom = 340 }
+            local subcategory = { name = name, frame = frame, id = 2000 + #world.settingsCategories }
+            function subcategory:GetID() return self.id end
+            category.subcategories = category.subcategories or {}
+            table.insert(category.subcategories, subcategory)
+            return subcategory, {}
         end,
         RegisterAddOnCategory = function(category) category.registered = true end,
         OpenToCategory = function(categoryID)
@@ -776,6 +796,41 @@ function Mock.SettingsControl(name)
     error("No setting named " .. name)
 end
 
+-- A page of its own under the add-on's, such as a canvas, by name.
+function Mock.SettingsSubpage(name)
+    for _, subcategory in ipairs(Mock.SettingsPage().subcategories or {}) do
+        if subcategory.name == name then
+            return subcategory.frame
+        end
+    end
+    error("No settings page named " .. name)
+end
+
+-- The game's auction house window, as its addon creates it the first time the auction
+-- house opens: 800 by 538, with its three tabs below it, each selecting itself.
+function Mock.LoadAuctionHouseUI()
+    local frame = NewObject({ frameType = "Frame", parent = realG.UIParent, width = 800, height = 538 })
+    frame.rect = { left = 400, right = 1200, top = 900, bottom = 362 }
+    frame.Tabs = {}
+    for index = 1, 3 do
+        local tab = NewObject({ frameType = "Button", parent = frame, template = "AuctionHouseFrameDisplayModeTabTemplate" })
+        TabTemplate(tab)
+        if index == 1 then
+            tab:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 20, 2)
+        else
+            tab:SetPoint("LEFT", frame.Tabs[index - 1], "RIGHT", 3, 0)
+        end
+        tab:SetScript("OnClick", function()
+            realG.PanelTemplates_SetTab(frame, index)
+        end)
+        frame.Tabs[index] = tab
+    end
+    frame.numTabs, frame.selectedTab = 3, 1
+    rawset(realG, "AuctionHouseFrame", frame)
+    Mock.Fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")
+    return frame
+end
+
 -- Greyed out in the panel when its parent's predicate says so.
 function Mock.IsControlEnabled(control)
     return control.predicate == nil or control.predicate() == true
@@ -888,6 +943,8 @@ function Mock.Boot(options)
     realG.TradingBookMainFrame = nil
     realG.TradingBookMinimapButton = nil
     realG.TradingBookExportFrame = nil
+    realG.TradingBookAuctionHouseTab = nil
+    realG.AuctionHouseFrame = nil
     InstallApi()
 
     setmetatable(realG, {

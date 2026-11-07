@@ -217,6 +217,15 @@ function Market.NextScanAt()
     return (ns.db.market.requestedAt or 0) + SCAN_INTERVAL_SECONDS
 end
 
+-- nil, or "waiting" for the server's answer or "reading" it. A request the server
+-- never answered no longer counts.
+function Market.GetScanState()
+    if state == "waiting" and time() - scan.requestedAt > ANSWER_TIMEOUT_SECONDS then
+        return nil
+    end
+    return state
+end
+
 -- byHand: asked for by the player, who is then told what happens. Returns whether
 -- a scan was requested.
 function Market.Scan(byHand)
