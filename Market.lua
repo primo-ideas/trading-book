@@ -12,6 +12,7 @@ local SCAN_INTERVAL_SECONDS = 15 * 60
 local ANSWER_TIMEOUT_SECONDS = 60
 -- After the owned auctions are requested, once the auction house UI has settled.
 local AUTO_SCAN_DELAY_SECONDS = 2
+local AUCTIONATOR_DELAY_SECONDS = 1
 local ENTRIES_PER_FRAME = 2000
 local KEEP_DAYS = 30
 local CHANGE_MIN_DAYS = 7
@@ -91,6 +92,24 @@ function Market.GetItem(itemID)
         seenAt = saved[SEEN],
         scannedAt = data.scannedAt,
     }
+end
+
+-- The lowest price known to be on sale now, as { price, source }, source being
+-- "scan" or "auctionator", or nil. A scan made today is the most complete answer.
+-- Otherwise Auctionator counts for what it saw today, and only knows the day.
+function Market.GetOffer(itemID)
+    local market = Market.GetItem(itemID)
+    local scanned = market and market.quantity > 0 and { price = market.price, source = "scan" } or nil
+    if scanned and ns.DayKey(market.scannedAt) == ns.DayKey(time()) then
+        return scanned
+    end
+    if ns.Stats.GetAuctionatorAge(itemID) == 0 then
+        local price = ns.Stats.GetAuctionatorPrice(itemID)
+        if price then
+            return { price = price, source = "auctionator" }
+        end
+    end
+    return scanned
 end
 
 -- When this realm's auction house was last scanned, or nil.
@@ -266,22 +285,7 @@ function Market.SetAutoScanEnabled(enabled)
     ns.db.ui.noAutoScan = not enabled or nil
 end
 
--- The answer to a scan reaches every addon, so one that another addon asked for,
--- such as Auctionator's full scan, is read too: with Auctionator, Trading Book does
--- not scan by itself, and undercuts and watched items would never be checked. The
--- game allows one request every 15 minutes, so an answer within that time of the
--- last request is that same answer again.
-local function AdoptOtherScan()
-    if state or not auctionHouseOpen or Market.NextScanAt() > time() then
-        return
-    end
-    ns.db.market.requestedAt = time()
-    state = "waiting"
-    scan = { requestedAt = time(), byHand = false }
-end
-
 ns.OnEvent("REPLICATE_ITEM_LIST_UPDATE", function()
-    AdoptOtherScan()
     if state ~= "waiting" then
         return
     end
@@ -297,6 +301,19 @@ ns.OnEvent("AUCTION_HOUSE_SHOW", function()
             if auctionHouseOpen then
                 Market.Scan(false)
             end
+        end)
+    end
+end)
+
+-- Auctionator says when its prices change, after a scan but also after each search,
+-- so several changes in a row count as one.
+ns.OnEvent("PLAYER_LOGIN", function()
+    local api = Auctionator and Auctionator.API and Auctionator.API.v1
+    if api and api.RegisterForDBUpdate then
+        pcall(api.RegisterForDBUpdate, "TradingBook", function()
+            ns.Debounce("auctionatorPrices", AUCTIONATOR_DELAY_SECONDS, function()
+                ns.Publish("AUCTIONATOR_PRICES_CHANGED")
+            end)
         end)
     end
 end)

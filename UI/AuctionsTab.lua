@@ -127,7 +127,7 @@ local function ShowRowTooltip(owner, row)
         GameTooltip:AddDoubleLine(L["Last synced"], ns.FormatDate(character and character.auctionsSyncedAt), 0.8, 0.8, 0.8, 1, 1, 1)
         if row.lowest then
             UI.AddMoneyLine(L["Lowest on the AH"], row.lowest)
-            GameTooltip:AddDoubleLine(L["AH scan"], ns.FormatDate(ns.Market.GetScannedAt()), 0.8, 0.8, 0.8, 1, 1, 1)
+            UI.AddOfferSourceLine(row.itemID)
         end
     end
     GameTooltip:Show()

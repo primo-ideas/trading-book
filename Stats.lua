@@ -225,6 +225,18 @@ function Stats.GetAuctionatorPrice(itemID)
     end
 end
 
+-- How many days ago Auctionator last saw an item on sale: 0 for today, and nil when
+-- it never did or more than three weeks ago.
+function Stats.GetAuctionatorAge(itemID)
+    local api = Auctionator and Auctionator.API and Auctionator.API.v1
+    if api and api.GetAuctionAgeByItemID then
+        local ok, age = pcall(api.GetAuctionAgeByItemID, "TradingBook", itemID)
+        if ok then
+            return age
+        end
+    end
+end
+
 -- Current unit value of an item, where it comes from ("auctionator", "scan" or
 -- "sales"), and for a scan when the item was last seen on sale.
 function Stats.GetUnitPrice(itemID)

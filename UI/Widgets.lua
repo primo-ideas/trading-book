@@ -78,6 +78,16 @@ function UI.AddMoneyLine(label, copper)
     UI.AddValueLine(GameTooltip, label, ns.FormatExactMoney(copper))
 end
 
+-- Where the price an auction is undercut by comes from.
+function UI.AddOfferSourceLine(itemID)
+    local offer = ns.Market.GetOffer(itemID)
+    if offer and offer.source == "auctionator" then
+        GameTooltip:AddLine(L["Source: Auctionator"], 0.8, 0.8, 0.8)
+    else
+        UI.AddValueLine(GameTooltip, L["AH scan"], ns.FormatDate(ns.Market.GetScannedAt()))
+    end
+end
+
 local HOLDING_PLACES = {
     { key = "bags", label = L["Bags"] },
     { key = "bank", label = L["Bank"] },

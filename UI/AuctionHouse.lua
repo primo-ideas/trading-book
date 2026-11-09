@@ -6,22 +6,25 @@ local Colors = UI.Colors
 -- A Trading Book tab in the auction house window: when the auction house was last
 -- scanned, a button to scan it, the account's undercut auctions and the watched items.
 --
--- The tab goes after the window's own, and after those of any addon that added its
--- tab first. Its panel covers the auction house's content rather than taking over
--- the auction house's display modes, which belong to the game.
+-- The game's tab list stays untouched: changing it, or selecting a tab through the
+-- PanelTemplates functions, taints the auction house and reaches the player's bags
+-- even in combat. The addons' tabs go through LibAHTab instead, when one of them
+-- brings it, as Auctionator does, so that they all stand in line and take turns.
+-- Without it, the tab does the same on its own.
 
--- Inside the auction house window, below its title bar.
-local PANEL_LEFT, PANEL_TOP, PANEL_RIGHT, PANEL_BOTTOM = 4, -26, -4, 4
+local TAB_ID, TAB_TITLE = "TradingBook", "Trading Book"
+local TAB_GAP = 3
+
+-- Inside the auction house window: below its title bar, above the player's money.
+local PANEL_LEFT, PANEL_TOP, PANEL_RIGHT, PANEL_BOTTOM = 4, -26, -4, 27
 local PADDING = 12
 local GAP = 10
 local TITLE_HEIGHT = 20
 local STATUS_HEIGHT = 40
 local SCAN_BUTTON_WIDTH, SCAN_BUTTON_HEIGHT = 220, 24
 local STATUS_REFRESH_SECONDS = 1
--- Above the auction house's own content, which the panel hides.
-local PANEL_LEVEL_OFFSET = 100
 
-local tab, tabIndex, panel = nil, nil, nil
+local panel = nil
 local lastScan, scanState, scanButton = nil, nil, nil
 local undercutTable, watchTable = nil, nil
 
@@ -66,8 +69,8 @@ end
 local function WatchRows()
     local rows = {}
     for _, watched in ipairs(ns.Watch.GetAll()) do
-        local market = ns.Market.GetItem(watched.itemID)
-        local price = market and market.quantity > 0 and market.price or nil
+        local offer = ns.Market.GetOffer(watched.itemID)
+        local price = offer and offer.price
         table.insert(rows, {
             itemID = watched.itemID,
             link = watched.link,
@@ -96,7 +99,7 @@ local function ShowUndercutTooltip(owner, row)
     GameTooltip:AddLine(" ")
     UI.AddMoneyLine(L["Unit price"], row.unit)
     UI.AddMoneyLine(L["Lowest on the AH"], row.lowest)
-    UI.AddValueLine(GameTooltip, L["AH scan"], ns.FormatDate(ns.Market.GetScannedAt()))
+    UI.AddOfferSourceLine(row.itemID)
     GameTooltip:Show()
 end
 
@@ -117,14 +120,8 @@ local function CreatePanel()
     panel = CreateFrame("Frame", nil, AuctionHouseFrame)
     panel:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPLEFT", PANEL_LEFT, PANEL_TOP)
     panel:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMRIGHT", PANEL_RIGHT, PANEL_BOTTOM)
-    panel:SetFrameLevel(AuctionHouseFrame:GetFrameLevel() + PANEL_LEVEL_OFFSET)
-    panel:EnableMouse(true)
     panel:Hide()
     UI.AddOwnFrame(panel)
-
-    local background = panel:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints()
-    background:SetColorTexture(0.06, 0.06, 0.06, 1)
 
     scanButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     scanButton:SetSize(SCAN_BUTTON_WIDTH, SCAN_BUTTON_HEIGHT)
@@ -208,56 +205,51 @@ end
 
 -- Tab ---------------------------------------------------------------------------------
 
-local function TabPosition(button)
-    for index, candidate in ipairs(AuctionHouseFrame.Tabs) do
-        if candidate == button then
-            return index
-        end
-    end
-end
+-- What LibAHTab does for its tabs, for when no addon brings it. An empty display mode
+-- makes the game hide its content, and forgetting it makes the game's next mode count
+-- as a change, so that its tab is selected again.
+local function AddOwnTab()
+    local frame = AuctionHouseFrame
+    local gameTabs = frame.Tabs
+    -- A frame of its own as parent keeps the button out of the game's tab list.
+    local root = CreateFrame("Frame", nil, frame)
+    root:SetSize(10, 10)
+    root:SetPoint("TOPLEFT", gameTabs[#gameTabs], "TOPRIGHT")
 
-local function Select()
-    PanelTemplates_SetTab(AuctionHouseFrame, tabIndex)
-    panel:Show()
-    Refresh()
+    local tab = CreateFrame("Button", "TradingBookAuctionHouseTab", root, "AuctionHouseFrameDisplayModeTabTemplate")
+    tab:SetText(TAB_TITLE)
+    tab:SetPoint("TOPLEFT", root, "TOPLEFT", TAB_GAP, 0)
+    PanelTemplates_DeselectTab(tab)
+    tab:SetScript("OnClick", function()
+        frame:SetDisplayMode({})
+        frame.displayMode = nil
+        for _, gameTab in ipairs(gameTabs) do
+            PanelTemplates_DeselectTab(gameTab)
+        end
+        PanelTemplates_SelectTab(tab)
+        frame:SetTitle(TAB_TITLE)
+        panel:Show()
+    end)
+
+    hooksecurefunc(frame, "SetDisplayMode", function(_, mode)
+        if mode ~= nil and #mode > 0 then
+            panel:Hide()
+            PanelTemplates_DeselectTab(tab)
+        end
+    end)
 end
 
 local function Build()
-    if tab or not AuctionHouseFrame then
+    if panel or not AuctionHouseFrame then
         return
     end
     CreatePanel()
-
-    local tabs = AuctionHouseFrame.Tabs
-    -- The game's own tabs, hooked before ours joins them. Selecting one again may
-    -- change nothing on the game's side, so the panel goes and the tab is marked here.
-    for _, button in ipairs(tabs) do
-        button:HookScript("OnClick", function(self)
-            if panel:IsShown() then
-                panel:Hide()
-                PanelTemplates_SetTab(AuctionHouseFrame, TabPosition(self))
-            end
-        end)
+    local library = LibStub and LibStub("LibAHTab-1-0", true)
+    if library then
+        library:CreateTab(TAB_ID, panel, TAB_TITLE)
+    else
+        AddOwnTab()
     end
-
-    tab = CreateFrame("Button", "TradingBookAuctionHouseTab", AuctionHouseFrame, "PanelTabButtonTemplate")
-    tab:SetText("Trading Book")
-    tab:SetPoint("LEFT", tabs[#tabs], "RIGHT", 3, 0)
-    table.insert(tabs, tab)
-    tabIndex = #tabs
-    tab:SetID(tabIndex)
-    PanelTemplates_SetNumTabs(AuctionHouseFrame, #tabs)
-    tab:SetScript("OnClick", Select)
-
-    -- Any other tab selected, including another addon's, takes the panel away.
-    hooksecurefunc("PanelTemplates_SetTab", function(frame, index)
-        if frame == AuctionHouseFrame and index ~= tabIndex then
-            panel:Hide()
-        end
-    end)
-    AuctionHouseFrame:HookScript("OnHide", function()
-        panel:Hide()
-    end)
 end
 
 -- The auction house window loads with the game's auction house addon, the first time
@@ -271,5 +263,6 @@ end)
 ns.OnEvent("PLAYER_LOGIN", Build)
 
 ns.Subscribe("MARKET_CHANGED", Refresh)
+ns.Subscribe("AUCTIONATOR_PRICES_CHANGED", Refresh)
 ns.Subscribe("AUCTIONS_CHANGED", Refresh)
 ns.Subscribe("WATCH_CHANGED", Refresh)
