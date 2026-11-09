@@ -15,6 +15,8 @@ local allowedGlobals = {
     TradingBookMinimapButton = true, TradingBookExportFrame = true, TradingBookAuctionHouseTab = true,
     -- Optional dependency, nil when not installed.
     Auctionator = true,
+    -- Comes with the addons that embed it, Auctionator among them.
+    LibStub = true,
     -- The game's auction house window, nil until its addon loads.
     AuctionHouseFrame = true,
 }
@@ -34,6 +36,7 @@ local OPTIONAL_FIELDS = {
     cells = true, markers = true, Stripe = true, Icon = true, data = true, bar = true,
     scrollChild = true, focused = true, highlighted = true,
     Text = true, Value = true, Bar = true, Inset = true, header = true, onEnter = true,
+    displayMode = true, selected = true,
     OnSlotLeave = true, Empty = true, Label = true,
 }
 
@@ -203,6 +206,7 @@ end
 
 -- Accepts every form the client does, and like it replaces an anchor on the same point.
 function Object:SetPoint(point, a, b, c, d)
+    assert(a ~= self, "Action[SetPoint] failed because[Cannot anchor to itself]")
     local relativeTo, relativePoint, x, y
     if type(a) == "number" then
         x, y = a, b
@@ -325,8 +329,16 @@ end
 
 -- Templates ----------------------------------------------------------------------
 
+-- parentArray="Tabs": a tab joins its parent's list as soon as it is created.
 local function TabTemplate(frame)
     frame.width, frame.height = 90, 32
+    local parent = rawget(frame, "parent")
+    local tabs = rawget(parent, "Tabs")
+    if not tabs then
+        tabs = {}
+        parent.Tabs = tabs
+    end
+    table.insert(tabs, frame)
 end
 
 local TEMPLATES = {
@@ -336,6 +348,7 @@ local TEMPLATES = {
         frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 26)
     end,
     PanelTabButtonTemplate = TabTemplate,
+    AuctionHouseFrameDisplayModeTabTemplate = TabTemplate,
     -- Its label uses GameFontNormal.
     UIPanelButtonTemplate = function(frame)
         frame.font = "GameFontNormal"
@@ -570,7 +583,16 @@ local function InstallApi()
         frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
     end
     G.PanelTemplates_SetNumTabs = function(frame, count) frame.numTabs = count end
-    G.PanelTemplates_SetTab = function(frame, index) frame.selectedTab = index end
+    G.PanelTemplates_SelectTab = function(tab) tab.selected = true end
+    G.PanelTemplates_DeselectTab = function(tab) tab.selected = false end
+    G.PanelTemplates_SetTab = function(frame, index)
+        frame.selectedTab = index
+        for position, tab in ipairs(rawget(frame, "Tabs") or {}) do
+            if position <= (rawget(frame, "numTabs") or 0) then
+                tab.selected = position == index
+            end
+        end
+    end
     G.ScrollBoxConstants = { RetainScrollPosition = true }
     G.CreateDataProvider = function(collection) return { collection = collection } end
     G.CreateScrollBoxListLinearView = function()
@@ -807,25 +829,38 @@ function Mock.SettingsSubpage(name)
 end
 
 -- The game's auction house window, as its addon creates it the first time the auction
--- house opens: 800 by 538, with its three tabs below it, each selecting itself.
+-- house opens: 800 by 538, with its three tabs below it. Each tab asks for its display
+-- mode, and like the game's SetDisplayMode, a mode already shown changes nothing and
+-- only the game's own modes select a tab. frame.BuyMode is what opening it asks for.
 function Mock.LoadAuctionHouseUI()
     local frame = NewObject({ frameType = "Frame", parent = realG.UIParent, width = 800, height = 538 })
     frame.rect = { left = 400, right = 1200, top = 900, bottom = 362 }
-    frame.Tabs = {}
-    for index = 1, 3 do
-        local tab = NewObject({ frameType = "Button", parent = frame, template = "AuctionHouseFrameDisplayModeTabTemplate" })
-        TabTemplate(tab)
+    local modes = { { "Buy" }, { "Sell" }, { "Auctions" } }
+    local tabForMode = {}
+    function frame.SetDisplayMode(self, mode)
+        if rawget(self, "displayMode") == mode then
+            return
+        end
+        self.displayMode = mode
+        if tabForMode[mode] then
+            realG.PanelTemplates_SetTab(self, tabForMode[mode])
+        end
+    end
+    for index, mode in ipairs(modes) do
+        tabForMode[mode] = index
+        local tab = CreateFrameMock("Button", nil, frame, "AuctionHouseFrameDisplayModeTabTemplate")
         if index == 1 then
             tab:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 20, 2)
         else
             tab:SetPoint("LEFT", frame.Tabs[index - 1], "RIGHT", 3, 0)
         end
         tab:SetScript("OnClick", function()
-            realG.PanelTemplates_SetTab(frame, index)
+            frame:SetDisplayMode(mode)
         end)
-        frame.Tabs[index] = tab
     end
-    frame.numTabs, frame.selectedTab = 3, 1
+    frame.BuyMode = modes[1]
+    frame.numTabs = 3
+    frame:SetDisplayMode(frame.BuyMode)
     rawset(realG, "AuctionHouseFrame", frame)
     Mock.Fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")
     return frame
@@ -945,6 +980,8 @@ function Mock.Boot(options)
     realG.TradingBookExportFrame = nil
     realG.TradingBookAuctionHouseTab = nil
     realG.AuctionHouseFrame = nil
+    realG.LibStub = nil
+    realG.Auctionator = options.auctionator
     InstallApi()
 
     setmetatable(realG, {

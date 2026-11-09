@@ -133,9 +133,9 @@ local function List()
     ns.Print(L["Watched items:"])
     for _, itemID in ipairs(itemIDs) do
         local parts = TargetParts(ns.db.watch[itemID])
-        local market = ns.Market.GetItem(itemID)
-        if market and market.quantity > 0 then
-            table.insert(parts, L["now %s"]:format(ns.FormatMoney(market.price)))
+        local offer = ns.Market.GetOffer(itemID)
+        if offer then
+            table.insert(parts, L["now %s"]:format(ns.FormatMoney(offer.price)))
         else
             table.insert(parts, L["no price yet"])
         end
@@ -198,20 +198,40 @@ end
 
 -- Alerts ---------------------------------------------------------------------------
 
--- Checked after each scan, against what is on sale at that moment.
-ns.Subscribe("MARKET_CHANGED", function()
-    for itemID, watched in pairs(ns.db.watch) do
-        local market = ns.Market.GetItem(itemID)
-        if market and market.quantity > 0 then
-            local price = ns.FormatMoney(market.price)
-            if watched.below and market.price <= watched.below then
-                ns.Print(L["Watched %s is at %s: %s."]:format(DisplayName(itemID), price,
-                    L["buy at %s or less"]:format(ns.FormatMoney(watched.below))))
-            end
-            if watched.above and market.price >= watched.above then
-                ns.Print(L["Watched %s is at %s: %s."]:format(DisplayName(itemID), price,
-                    L["sell at %s or more"]:format(ns.FormatMoney(watched.above))))
-            end
-        end
+-- The price last said for each target reached, by direction and item.
+local announced = {}
+
+-- always: say it even at the price already given.
+local function AnnounceTarget(itemID, direction, reached, price, target, wording, always)
+    local key = direction .. itemID
+    if not reached then
+        announced[key] = nil
+        return
     end
+    if always or announced[key] ~= price then
+        ns.Print(L["Watched %s is at %s: %s."]:format(DisplayName(itemID), ns.FormatMoney(price),
+            wording:format(ns.FormatMoney(target))))
+    end
+    announced[key] = price
+end
+
+local function CheckTargets(always)
+    for itemID, watched in pairs(ns.db.watch) do
+        local offer = ns.Market.GetOffer(itemID)
+        local price = offer and offer.price
+        AnnounceTarget(itemID, "below", price and watched.below and price <= watched.below, price, watched.below,
+            L["buy at %s or less"], always)
+        AnnounceTarget(itemID, "above", price and watched.above and price >= watched.above, price, watched.above,
+            L["sell at %s or more"], always)
+    end
+end
+
+-- After each scan, against what is on sale at that moment.
+ns.Subscribe("MARKET_CHANGED", function()
+    CheckTargets(true)
+end)
+
+-- Auctionator's prices change with each search: only a new price is worth saying.
+ns.Subscribe("AUCTIONATOR_PRICES_CHANGED", function()
+    CheckTargets(false)
 end)

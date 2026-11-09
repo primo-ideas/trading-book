@@ -2295,10 +2295,15 @@ test("closing the auction house drops a scan in progress and keeps the previous 
     eq(has(world.printed[#world.printed], "scan stopped"), true, world.printed[#world.printed])
 end)
 
-test("a scan's answer is not read while the auction house is closed", function()
+test("a scan's answer is only read when Trading Book asked for it", function()
     local ns = Mock.Boot()
     answerScan({ auction(1001, 1, 90) })
-    eq(ns.Market.GetItem(1001), nil)
+    eq(ns.Market.GetItem(1001), nil, "the auction house is closed")
+
+    Mock.SettingsControl("Scan the auction house").setting:SetValue(false)
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 90) })
+    eq(ns.Market.GetItem(1001), nil, "another addon's scan")
 end)
 
 test("a request the server never answers does not block the next one", function()
@@ -2704,36 +2709,104 @@ test("a price can be split by spaces, as players often write it", function()
     eq(ns.Watch.Get(1001).below, 25010, "unchanged")
 end)
 
-test("with Auctionator, its full scan is read, so undercuts and watched items are checked", function()
-    local ns, world = Mock.Boot()
-    ns.RememberItem(1001, "Herb", 1, 1)
-    setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100) })
-    SlashCmdList.TRADINGBOOK("watch Herb 1g")
-    rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function() return 500 end } } })
-    openAuctionHouse()
-    rawset(_G, "Auctionator", nil)
-    eq(world.replicateRequests, 0, "Auctionator has prices: no request of our own")
+-- A fake Auctionator, with its prices and ages by item, and what to call for it to say
+-- that its prices changed, a number of times in a row.
+local function fakeAuctionator(prices, ages)
+    local listeners = {}
+    local addon = { API = { v1 = {
+        GetAuctionPriceByItemID = function(_, itemID) return prices[itemID] end,
+        GetAuctionAgeByItemID = function(_, itemID) return ages[itemID] end,
+        RegisterForDBUpdate = function(caller, callback)
+            eq(caller, "TradingBook")
+            table.insert(listeners, callback)
+        end,
+    } } }
+    return addon, function(times)
+        for _ = 1, times or 1 do
+            for _, callback in ipairs(listeners) do
+                callback()
+            end
+        end
+        Mock.RunTimers()
+    end
+end
 
-    -- Auctionator asks for a full scan, and the game answers every addon.
+test("the price on sale now comes from today's scan, or else from what Auctionator saw today", function()
+    local auctionator = fakeAuctionator({ [1001] = 90, [1002] = 80, [1003] = 70, [1004] = 60 },
+        { [1001] = 0, [1002] = 1, [1003] = 0 })
+    local ns, world = Mock.Boot({ auctionator = auctionator })
+    local function offer(itemID)
+        local found = ns.Market.GetOffer(itemID)
+        return found and found.price, found and found.source
+    end
+
+    local price, source = offer(1001)
+    eq(price, 90)
+    eq(source, "auctionator")
+    eq(offer(1002), nil, "seen yesterday: maybe no longer on sale")
+    eq(offer(1004), nil, "no age: too old or never seen")
+
+    openAuctionHouse()
+    answerScan({ auction(1001, 1, 50), auction(1005, 1, 40) })
+    price, source = offer(1001)
+    eq(price, 50, "today's scan is the most complete")
+    eq(source, "scan")
+    eq(offer(1003), 70, "Auctionator for what the scan did not see")
+
+    world.now = world.now + 86400
+    price, source = offer(1001)
+    eq(price, 90, "the scan is from yesterday")
+    eq(source, "auctionator")
+    price, source = offer(1005)
+    eq(price, 40, "still the latest word on an item Auctionator does not know")
+    eq(source, "scan")
+end)
+
+test("with Auctionator, its prices check undercuts and watched items, saying only what is new", function()
+    local prices = { [1001] = 90 }
+    local auctionator, update = fakeAuctionator(prices, { [1001] = 0 })
+    local ns, world = Mock.Boot({ auctionator = auctionator })
+    ns.RememberItem(1001, "Herb", 1, 1)
+    local mine = liveAuction(world, 1, 1001, 100)
+    setAuctions(ns, nil, { mine })
+    SlashCmdList.TRADINGBOOK("watch Herb 1g")
+    openAuctionHouse()
+    eq(world.replicateRequests, 0, "Auctionator has prices: no scan of our own")
+
     local printed = #world.printed
-    answerScan({ auction(1001, 1, 90), auction(1001, 1, 100) })
+    update()
     local said = table.concat(world.printed, "\n", printed + 1)
-    eq(ns.Market.GetItem(1001).price, 90)
+    eq(ns.Auctions.GetUndercut()[mine], 90)
     eq(has(said, "Undercut auctions: 1."), true, said)
     eq(has(said, "Watched Herb is at 90c: buy at 10000c or less."), true, said)
 
-    world.now = world.now + 60
     printed = #world.printed
-    answerScan({ auction(1001, 1, 10) })
-    eq(ns.Market.GetItem(1001).price, 90, "within 15 minutes, the event repeats the same answer")
-    eq(#world.printed, printed, "nothing said twice")
-    SlashCmdList.TRADINGBOOK("scan")
-    eq(world.replicateRequests, 0, "the game would refuse a request this soon")
-    eq(has(lastPrinted(world), "scanned again in 14 min"), true, lastPrinted(world))
+    update()
+    eq(#world.printed, printed, "the next search in Auctionator: nothing new to say")
 
-    world.now = world.now + 20 * 60
-    answerScan({ auction(1001, 1, 80) })
-    eq(ns.Market.GetItem(1001).price, 80, "the next scan is read")
+    prices[1001] = 80
+    update(3)
+    eq(#world.printed, printed + 1, "several changes in a row count as one: " .. lastPrinted(world))
+    eq(has(lastPrinted(world), "Watched Herb is at 80c"), true, lastPrinted(world))
+
+    prices[1001] = 20000
+    update()
+    printed = #world.printed
+    prices[1001] = 80
+    update()
+    eq(has(table.concat(world.printed, "\n", printed + 1), "Watched Herb is at 80c"), true, "reached again")
+end)
+
+test("an Auctionator that fails or lacks the newer functions changes nothing", function()
+    local function boom()
+        error("boom")
+    end
+    local ns = Mock.Boot({ auctionator = { API = { v1 = {
+        GetAuctionPriceByItemID = boom, GetAuctionAgeByItemID = boom, RegisterForDBUpdate = boom,
+    } } } })
+    eq(ns.Market.GetOffer(1001), nil)
+    local older = Mock.Boot({ auctionator = { API = { v1 = { GetAuctionPriceByItemID = function() return 5 end } } } })
+    eq(older.Market.GetOffer(1001), nil, "without its age, nothing says it is on sale")
 end)
 
 -- Export ----------------------------------------------------------------------------
@@ -3047,13 +3120,76 @@ end)
 
 -- Auction house tab -------------------------------------------------------------------
 
--- The panel the Trading Book tab shows over the auction house's content.
+-- The panel the Trading Book tab shows in the auction house window.
 local function auctionHousePanel(ah)
     for _, object in ipairs(Mock.Objects()) do
-        if rawget(object, "parent") == ah and object.frameType == "Frame" then
+        if rawget(object, "parent") == ah and object.scripts.OnUpdate then
             return object
         end
     end
+end
+
+local function click(button)
+    button.scripts.OnClick(button)
+end
+
+-- A stand-in for LibAHTab that behaves like the library Auctionator brings: its tabs
+-- stand in a line after the game's, which it leaves in their list, and take turns.
+local function installLibAHTab()
+    local library = { tabs = {}, byID = {} }
+    function library:CreateTab(id, attached, text)
+        if not self.root then
+            local tabs = AuctionHouseFrame.Tabs
+            self.root = CreateFrame("Frame", nil, AuctionHouseFrame)
+            self.root:SetSize(10, 10)
+            self.root:SetPoint("TOPLEFT", tabs[#tabs], "TOPRIGHT")
+            hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function(_, mode)
+                if mode ~= nil and #mode > 0 then
+                    for _, tab in ipairs(self.tabs) do
+                        tab.frameRef:Hide()
+                        PanelTemplates_DeselectTab(tab)
+                    end
+                end
+            end)
+        end
+        local tab = CreateFrame("Button", "LibAHFrame-1.0-" .. id, self.root, "AuctionHouseFrameDisplayModeTabTemplate")
+        tab:SetText(text)
+        local previous = self.tabs[#self.tabs]
+        if previous then
+            tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", 3, 0)
+        else
+            tab:SetPoint("TOPLEFT", self.root, "TOPLEFT", 3, 0)
+        end
+        tab.frameRef = attached
+        attached:Hide()
+        tab:SetScript("OnClick", function()
+            self:SetSelected(id)
+        end)
+        table.insert(self.tabs, tab)
+        self.byID[id] = tab
+    end
+    function library:GetButton(id)
+        return self.byID[id]
+    end
+    function library:SetSelected(id)
+        AuctionHouseFrame:SetDisplayMode({})
+        AuctionHouseFrame.displayMode = nil
+        for _, tab in ipairs(self.tabs) do
+            tab.frameRef:Hide()
+            PanelTemplates_DeselectTab(tab)
+        end
+        for _, tab in ipairs(AuctionHouseFrame.Tabs) do
+            PanelTemplates_DeselectTab(tab)
+        end
+        PanelTemplates_SelectTab(self.byID[id])
+        self.byID[id].frameRef:Show()
+    end
+    rawset(_G, "LibStub", function(major, silent)
+        eq(major, "LibAHTab-1-0")
+        eq(silent, true, "not an error when no addon brings it")
+        return library
+    end)
+    return library
 end
 
 -- The two status lines at the top of the panel, and its scan button.
@@ -3071,34 +3207,112 @@ local function auctionHouseStatus(panel)
     return lastScan:GetText(), state:GetText(), frameWithin("UIPanelButtonTemplate", panel)
 end
 
-test("the auction house window gets a Trading Book tab after its own", function()
+test("the Trading Book tab comes after the game's and takes turns with them, leaving their list alone", function()
     Mock.Boot()
     local ah = Mock.LoadAuctionHouseUI()
-    eq(#ah.Tabs, 4)
-    local tab = ah.Tabs[4]
-    eq(tab, TradingBookAuctionHouseTab)
+    ah.SetTitle = function(_, title)
+        ah.title = title
+    end
+    eq(#ah.Tabs, 3, "the game's tabs on their own: changing the list taints the bags")
+    eq(ah.numTabs, 3)
+    local tab = TradingBookAuctionHouseTab
     eq(tab:GetText(), "Trading Book")
-    eq(ah.numTabs, 4)
     near(Mock.Rect(tab).left, Mock.Rect(ah.Tabs[3]).right + 3, 0.01, "after the last tab")
+    eq(tab.selected, false)
+
+    local panelTemplateCalls = 0
+    local setTab = PanelTemplates_SetTab
+    rawset(_G, "PanelTemplates_SetTab", function(frame, index)
+        panelTemplateCalls = panelTemplateCalls + 1
+        setTab(frame, index)
+    end)
 
     local panel = auctionHousePanel(ah)
     eq(panel:IsShown(), false, "until the tab is clicked")
-    tab.scripts.OnClick(tab)
+    click(tab)
     eq(panel:IsShown(), true)
-    eq(ah.selectedTab, 4)
+    eq(tab.selected, true)
+    eq(ah.Tabs[1].selected, false, "the game's tab is no longer marked")
+    eq(ah.title, "Trading Book")
+    eq(ah.displayMode, nil, "so that the game's next mode counts as a change")
+    eq(panelTemplateCalls, 0, "the game's selected tab is not written from here")
     near(Mock.Rect(panel).top, Mock.Rect(ah).top - 26, 0.01, "below the title bar")
+    near(Mock.Rect(panel).bottom, Mock.Rect(ah).bottom + 27, 0.01, "above the player's money")
 
-    ah.Tabs[1].scripts.OnClick(ah.Tabs[1])
+    click(ah.Tabs[1])
     eq(panel:IsShown(), false, "the game's tab takes over")
+    eq(tab.selected, false)
     eq(ah.selectedTab, 1)
+    eq(ah.Tabs[1].selected, true)
 
-    tab.scripts.OnClick(tab)
-    PanelTemplates_SetTab(ah, 5)
-    eq(panel:IsShown(), false, "another addon's tab too")
+    click(tab)
+    ah:SetDisplayMode(ah.BuyMode) -- What opening the auction house asks for.
+    eq(panel:IsShown(), false, "reopened on the game's first tab")
+    eq(tab.selected, false)
+    eq(ah.Tabs[1].selected, true)
+end)
 
-    tab.scripts.OnClick(tab)
-    ah.scripts.OnHide(ah)
-    eq(panel:IsShown(), false, "closing the auction house")
+test("with LibAHTab, as Auctionator brings it, the tab stands in line with the addons' tabs", function()
+    Mock.Boot()
+    local library = installLibAHTab()
+    local ah = Mock.LoadAuctionHouseUI()
+    local shopping = CreateFrame("Frame", nil, ah)
+    library:CreateTab("Shopping", shopping, "Shopping")
+
+    eq(#ah.Tabs, 3, "the game's list stays as it is")
+    eq(rawget(_G, "TradingBookAuctionHouseTab"), nil, "no tab of its own")
+    local ours, theirs = library:GetButton("TradingBook"), library:GetButton("Shopping")
+    eq(ours:GetText(), "Trading Book")
+    local lastGameTab, oursRect, theirsRect = Mock.Rect(ah.Tabs[3]), Mock.Rect(ours), Mock.Rect(theirs)
+    eq(oursRect ~= nil and theirsRect ~= nil, true, "both have a place")
+    eq(oursRect.left >= lastGameTab.right, true, "after the game's")
+    eq(theirsRect.left >= oursRect.right, true, "side by side")
+
+    local panel = auctionHousePanel(ah)
+    click(ours)
+    eq(panel:IsShown(), true)
+    eq(ours.selected, true)
+    click(theirs)
+    eq(panel:IsShown(), false, "Auctionator's tab takes over")
+    eq(shopping:IsShown(), true)
+    eq(ours.selected, false)
+    click(ours)
+    eq(shopping:IsShown(), false, "and gives way")
+    eq(theirs.selected, false)
+    eq(panel:IsShown(), true)
+    click(ah.Tabs[2])
+    eq(panel:IsShown(), false, "the game's tab too")
+    eq(ours.selected, false)
+end)
+
+test("with Auctionator, the auction house tab lists what its prices show", function()
+    local prices = { [1001] = 90 }
+    local auctionator, update = fakeAuctionator(prices, { [1001] = 0 })
+    local ns, world = Mock.Boot({ auctionator = auctionator })
+    local tables = captureTables(ns)
+    ns.RememberItem(1001, "Herb", 1, 1)
+    setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100) })
+    SlashCmdList.TRADINGBOOK("watch Herb 1g")
+    Mock.LoadAuctionHouseUI()
+    openAuctionHouse()
+    eq(world.replicateRequests, 0, "no scan of our own")
+    click(TradingBookAuctionHouseTab)
+
+    local undercut, watched = tables[1], tables[2]
+    eq(undercut.rows[1].lowest, 90)
+    eq(watched.rows[1].price, 90)
+    eq(watched.rows[1].reached, true)
+
+    local row = undercut.ScrollBox.rendered[1]
+    GameTooltip.lines = {}
+    row.scripts.OnEnter(row)
+    local lines = table.concat(GameTooltip.lines, "\n")
+    eq(has(lines, "Source: Auctionator"), true, lines)
+    eq(has(lines, "AH scan"), false, "no scan of ours to date it: " .. lines)
+
+    prices[1001] = 80
+    update()
+    eq(watched.rows[1].price, 80, "follows Auctionator while open")
 end)
 
 test("the auction house tab shows the scan, the undercut auctions and the watched items", function()
@@ -3112,7 +3326,7 @@ test("the auction house tab shows the scan, the undercut auctions and the watche
     local ah = Mock.LoadAuctionHouseUI()
     openAuctionHouse()
     answerScan({ auction(1001, 1, 90), auction(1002, 1, 40) })
-    ah.Tabs[4].scripts.OnClick(ah.Tabs[4])
+    click(TradingBookAuctionHouseTab)
     local panel = auctionHousePanel(ah)
 
     local lastScan, state, button = auctionHouseStatus(panel)
@@ -3162,7 +3376,7 @@ test("the auction house tab's item tooltips do not get the lines twice", functio
     local ah = Mock.LoadAuctionHouseUI()
     openAuctionHouse()
     answerScan({ auction(1001, 1, 90) })
-    ah.Tabs[4].scripts.OnClick(ah.Tabs[4])
+    click(TradingBookAuctionHouseTab)
     local row = tables[1].ScrollBox.rendered[1]
     GameTooltip.lines = {}
     row.scripts.OnEnter(row)
@@ -3176,7 +3390,7 @@ layoutTest("layout: the auction house tab fits its texts", function()
     local tables = captureTables(ns)
     local ah = Mock.LoadAuctionHouseUI()
     openAuctionHouse()
-    ah.Tabs[4].scripts.OnClick(ah.Tabs[4])
+    click(TradingBookAuctionHouseTab)
     local panel = auctionHousePanel(ah)
     local bounds = Mock.Rect(panel)
     for _, object in ipairs(Mock.Objects()) do

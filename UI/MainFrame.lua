@@ -294,6 +294,7 @@ ns.Subscribe("LEDGER_CHANGED", RequestRefresh)
 ns.Subscribe("AUCTIONS_CHANGED", RequestRefresh)
 ns.Subscribe("STOCK_CHANGED", RequestRefresh)
 ns.Subscribe("MARKET_CHANGED", RequestRefresh)
+ns.Subscribe("AUCTIONATOR_PRICES_CHANGED", RequestRefresh)
 
 ns.Subscribe("ORDER_CHANGED", function()
     if frame then

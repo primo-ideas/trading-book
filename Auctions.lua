@@ -262,21 +262,34 @@ function Auctions.GetUndercut()
     end
     local undercut = {}
     for _, auction in ipairs(onSale) do
-        local market = ns.Market.GetItem(auction.itemID)
-        if market and market.quantity > 0 and market.price < ownLowest[auction.itemID] then
-            undercut[auction] = market.price
+        local offer = ns.Market.GetOffer(auction.itemID)
+        if offer and offer.price < ownLowest[auction.itemID] then
+            undercut[auction] = offer.price
         end
     end
     return undercut
 end
 
-ns.Subscribe("MARKET_CHANGED", function()
+local announcedUndercuts = 0
+
+-- always: say it even when the count is the one already given.
+local function AnnounceUndercuts(always)
     local count = 0
     for _ in pairs(Auctions.GetUndercut()) do
         count = count + 1
     end
-    if count > 0 then
+    if count > 0 and (always or count ~= announcedUndercuts) then
         ns.Print(L["Undercut auctions: %s. The Active list of the Auctions tab marks them."]:format(
             BreakUpLargeNumbers(count)))
     end
+    announcedUndercuts = count
+end
+
+ns.Subscribe("MARKET_CHANGED", function()
+    AnnounceUndercuts(true)
+end)
+
+-- Auctionator's prices change with each search: only a new count is worth saying.
+ns.Subscribe("AUCTIONATOR_PRICES_CHANGED", function()
+    AnnounceUndercuts(false)
 end)
