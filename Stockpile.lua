@@ -18,6 +18,8 @@ local BAG_IDS = {
     Enum.BagIndex.ReagentBag,
 }
 
+Stockpile.BAG_IDS = BAG_IDS
+
 local bankOpen = false
 
 local function CountContainers(bagIDs)

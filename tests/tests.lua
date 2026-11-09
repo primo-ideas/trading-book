@@ -3400,7 +3400,7 @@ layoutTest("layout: the auction house tab fits its texts", function()
             eq(object:GetStringWidth() <= rect.right - rect.left + 0.01, true, ("cut: %q"):format(object.text))
         end
     end
-    eq(#tables, 2)
+    eq(#tables, 3)
     for _, tbl in ipairs(tables) do
         local list = Mock.Rect(tbl.ScrollBox)
         eq(Mock.Rect(tbl).bottom >= bounds.bottom - 0.01, true, "table below the panel")
@@ -3413,6 +3413,529 @@ layoutTest("layout: the auction house tab fits its texts", function()
     end
     local _, _, button = auctionHouseStatus(panel)
     eq(button:GetStringWidth() <= button.width - 16, true, "button text: " .. button:GetText())
+end)
+
+-- Quick sell --------------------------------------------------------------------------
+
+-- Opens the Trading Book tab with the bags as they are, and returns the list of what
+-- can be sold, the game's window and the two boxes for the quantity and the price.
+local function openQuickSell(ns)
+    local tables = captureTables(ns)
+    local ah = Mock.LoadAuctionHouseUI()
+    Mock.Fire("AUCTION_HOUSE_SHOW")
+    Mock.RunTimers()
+    click(TradingBookAuctionHouseTab)
+    local boxes = Mock.FindFrames("InputBoxTemplate")
+    return tables[3], ah, boxes[1], boxes[2]
+end
+
+local function clickRow(list, name)
+    for _, row in ipairs(list.ScrollBox.rendered) do
+        if row.data.name == name then
+            row.scripts.OnClick(row)
+            return row
+        end
+    end
+    error("No row named " .. name)
+end
+
+local function rowNames(list)
+    local names = {}
+    for _, row in ipairs(list.rows) do
+        table.insert(names, row.name .. "=" .. row.qty)
+    end
+    return table.concat(names, ",")
+end
+
+local function selectedRow(list)
+    for _, row in ipairs(list.ScrollBox.rendered) do
+        if row.Selected:IsShown() then
+            return row.data.name
+        end
+    end
+end
+
+-- The text beside a label of the item being sold.
+local function valueBeside(labelText)
+    local label
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and object.text == labelText and object.font == "GameFontNormalSmall" then
+            label = object
+        end
+    end
+    local top = Mock.Rect(label).top
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and object ~= label and rawget(object, "parent") == rawget(label, "parent")
+            and object.font == "GameFontHighlight" and Mock.Rect(object) and math.abs(Mock.Rect(object).top - top) < 0.01 then
+            return object.text
+        end
+    end
+end
+
+-- What the auction house answers for a commodity: { unitPrice, quantity, own? } rows.
+local function answerCommodity(world, itemID, rows)
+    local results = {}
+    for index, row in ipairs(rows) do
+        results[index] = { unitPrice = row[1], quantity = row[2], containsOwnerItem = row[3] or false,
+            owners = { row[3] and "player" or "Someone" } }
+    end
+    world.commodityResults[itemID] = results
+    Mock.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", itemID)
+    Mock.RunTimers()
+end
+
+local function answerItem(world, itemKey, buyouts, own)
+    local results = {}
+    for index, buyout in ipairs(buyouts) do
+        results[index] = { buyoutAmount = buyout or nil, itemKey = itemKey, containsOwnerItem = own or false }
+    end
+    world.itemResults[itemKey.itemID] = results
+    Mock.Fire("ITEM_SEARCH_RESULTS_UPDATED", itemKey)
+    Mock.RunTimers()
+end
+
+local function press(name)
+    local button = rawget(_G, name)
+    button.scripts.OnClick(button)
+end
+
+local POST, NEXT, PREVIOUS = "TradingBookQuickSellPost", "TradingBookQuickSellNext", "TradingBookQuickSellPrevious"
+
+local function herbAndOre(world)
+    Mock.SetBagItem(0, 1, 1001, "Herb", 20, { commodity = true })
+    Mock.SetBagItem(0, 2, 1001, "Herb", 5, { commodity = true })
+    Mock.SetBagItem(0, 3, 1002, "Ore", 7, { commodity = true })
+    world.money = 1000000
+end
+
+test("quick sell lists what the bags can sell, one row per kind of item", function()
+    local ns = Mock.Boot()
+    Mock.SetBagItem(0, 1, 1001, "Herb", 20, { commodity = true })
+    Mock.SetBagItem(0, 2, 1001, "Herb", 5, { commodity = true })
+    Mock.SetBagItem(1, 1, 2001, "Sword", 1, { itemLevel = 100 })
+    Mock.SetBagItem(1, 2, 2001, "Sword", 1, { itemLevel = 200 })
+    Mock.SetBagItem(1, 3, 2001, "Sword", 1, { itemLevel = 200 })
+    Mock.SetBagItem(2, 1, 3001, "Soulbound", 1, { isBound = true })
+    Mock.SetBagItem(2, 2, 3002, "Quest item", 1, { notSellable = true })
+    Mock.SetBagItem(2, 3, 3003, "Grey rock", 3, { quality = 0 })
+    Mock.SetBagItem(2, 4, 3004, "Grey axe", 1, { quality = 0, equipment = true })
+    Mock.SetBagItem(2, 5, 3005, "On its way", 1, { isLocked = true })
+    Mock.SetBagItem(3, 1, 3006, "Not loaded", 1, { commodityStatus = 0 })
+    Mock.SetBagItem(6, 1, 4001, "In the bank", 1)
+    local list = openQuickSell(ns)
+    eq(rowNames(list), "Grey axe=1,Herb=25,Sword (100)=1,Sword (200)=2")
+end)
+
+test("choosing an item fills in all of it for 48 hours at the lowest price on sale", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list, _, quantity, price = openQuickSell(ns)
+    eq(Mock.IsVisible(rawget(_G, POST)), false, "nothing chosen yet: the card is empty")
+
+    clickRow(list, "Herb")
+    eq(selectedRow(list), "Herb")
+    eq(quantity:GetText(), "25", "every stack")
+    eq(#world.searches, 1)
+    eq(world.searches[1].kind, "commodity")
+    eq(world.searches[1].itemKey.itemID, 1001)
+    eq(valueBeside("Lowest on the AH"), "Searching...")
+    eq(rawget(_G, POST).enabled, false, "not before the auction house has answered")
+
+    answerCommodity(world, 1001, { { 90000, 3 }, { 95000, 40 } })
+    eq(valueBeside("Lowest on the AH"), "90000c")
+    eq(price:GetText(), "9g", "the same price")
+    eq(valueBeside("Total"), "2250000c")
+    eq(valueBeside("Deposit"), "300c", "rounded up to the silver, as the game wants")
+    eq(rawget(_G, POST).enabled, true)
+end)
+
+test("posting lists the item as proposed and moves on to the next one", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list, _, quantity, price = openQuickSell(ns)
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 90000, 3 }, { 95000, 40 } })
+    press(POST)
+
+    eq(#world.posts, 1)
+    local post = world.posts[1]
+    eq(post.kind, "commodity")
+    eq(post.quantity, 25)
+    eq(post.price, 90000)
+    eq(post.duration, 3, "48 hours")
+    eq(post.location.bag, 0)
+    eq(post.location.slot, 1)
+
+    eq(selectedRow(list), "Ore", "the next item")
+    eq(quantity:GetText(), "7")
+    eq(world.searches[#world.searches].itemKey.itemID, 1002)
+    eq(rawget(_G, POST).enabled, false, "waiting for the next price")
+
+    Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 77)
+    local entry = TradingBookDB.ledger[1]
+    eq(entry.kind, "post", "recorded like any listing")
+    eq(entry.unit, 90000)
+    eq(price:GetText(), "", "Ore has no known price yet")
+end)
+
+test("the last item leaves nothing selected, and the setting can keep from moving on", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    Mock.SettingsControl("Next item after posting").setting:SetValue(false)
+    local list = openQuickSell(ns)
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 90000, 3 } })
+    press(POST)
+    eq(selectedRow(list), nil, "stops there when asked to")
+    eq(#world.searches, 1, "no search for another item")
+
+    Mock.SettingsControl("Next item after posting").setting:SetValue(true)
+    clickRow(list, "Ore")
+    answerCommodity(world, 1002, { { 5000, 3 } })
+    press(POST)
+    eq(selectedRow(list), nil, "nothing after the last row")
+end)
+
+test("the next and previous buttons go through the list without posting", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list = openQuickSell(ns)
+    clickRow(list, "Herb")
+    eq(rawget(_G, PREVIOUS).enabled, false, "the first row")
+    eq(rawget(_G, NEXT).enabled, true)
+    press(NEXT)
+    eq(selectedRow(list), "Ore")
+    eq(rawget(_G, NEXT).enabled, false, "the last row")
+    press(PREVIOUS)
+    eq(selectedRow(list), "Herb")
+    eq(#world.posts, 0)
+end)
+
+test("the sale duration and proposed price come from the settings, and can change per item", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    eq(Mock.SettingsControl("Sale duration").setting:GetValue(), 48, "two days by default")
+    eq(Mock.SettingsControl("Proposed price").setting:GetValue(), "same", "the same price by default")
+    Mock.SettingsControl("Sale duration").setting:SetValue(24)
+    Mock.SettingsControl("Proposed price").setting:SetValue("percent5")
+    local list, _, _, price = openQuickSell(ns)
+
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 90000, 3 } })
+    eq(price:GetText(), "8g55s", "five percent under")
+    press(POST)
+    eq(world.posts[1].duration, 2, "24 hours")
+
+    answerCommodity(world, 1002, { { 90000, 3, true } })
+    eq(price:GetText(), "9g", "no need to undercut one's own auction")
+
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and object.text == "12 h" then
+            local segment = rawget(object, "parent")
+            segment.scripts.OnClick(segment)
+        end
+    end
+    press(POST)
+    eq(world.posts[2].duration, 1, "12 hours for this one")
+end)
+
+test("proposed prices stay what the game accepts", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list, _, _, price = openQuickSell(ns)
+    Mock.SettingsControl("Proposed price").setting:SetValue("gold")
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 5000, 3 } })
+    eq(price:GetText(), "1s", "at least one silver")
+    eq(ns.Selling.NormalizePrice(10050), 10100, "copper rounds up")
+    press(POST)
+    press(POST) -- Far under the lowest price: it takes a second press.
+    eq(world.posts[1].price, 100)
+end)
+
+test("a typed price is kept and read like the watch list's, and an unreadable one cannot post", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list, _, quantity, price = openQuickSell(ns)
+    clickRow(list, "Herb")
+    price:SetText("12g 50s")
+    price.scripts.OnTextChanged(price, true)
+    eq(rawget(_G, POST).enabled, true, "a price of one's own need not wait for the search")
+    answerCommodity(world, 1001, { { 90000, 3 } })
+    eq(price:GetText(), "12g 50s", "the answer does not replace it")
+
+    price:SetText("nonsense")
+    price.scripts.OnTextChanged(price, true)
+    eq(rawget(_G, POST).enabled, false)
+    price:SetText("12g5c")
+    price.scripts.OnTextChanged(price, true)
+    eq(rawget(_G, POST).enabled, false, "copper would be silently refused")
+    price:SetText("13g")
+    price.scripts.OnTextChanged(price, true)
+    quantity:SetText("26")
+    quantity.scripts.OnTextChanged(quantity, true)
+    eq(rawget(_G, POST).enabled, false, "more than the bags hold")
+    quantity:SetText("10")
+    quantity.scripts.OnTextChanged(quantity, true)
+    price.scripts.OnEnterPressed(price)
+    eq(world.posts[1].quantity, 10, "Enter posts")
+    eq(world.posts[1].price, 130000)
+end)
+
+test("an item nobody sells starts from what is known of it, or waits for a price", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 1, gross = 50050 })
+    local list, _, _, price = openQuickSell(ns)
+    clickRow(list, "Herb")
+    eq(price:GetText(), "5g1s", "from recent sales, in whole silver")
+    answerCommodity(world, 1001, {})
+    eq(valueBeside("Lowest on the AH"), "None on sale")
+    eq(price:GetText(), "5g1s", "still the best guess")
+    eq(rawget(_G, POST).enabled, true)
+
+    clickRow(list, "Ore")
+    answerCommodity(world, 1002, {})
+    eq(price:GetText(), "")
+    eq(rawget(_G, POST).enabled, false, "no price to post at")
+end)
+
+test("gear searches its own level, posts as an item, and ignores other answers", function()
+    local ns, world = Mock.Boot()
+    world.money = 1000000
+    Mock.SetBagItem(1, 1, 2001, "Sword", 1, { itemLevel = 200 })
+    local list, _, _, price = openQuickSell(ns)
+    clickRow(list, "Sword (200)")
+    local sent = world.searches[1]
+    eq(sent.kind, "item")
+    eq(sent.itemKey.itemLevel, 200)
+
+    answerItem(world, { itemID = 2001, itemLevel = 100, itemSuffix = 0 }, { 500 })
+    eq(valueBeside("Lowest on the AH"), "Searching...", "another level of the same item")
+    answerCommodity(world, 2001, { { 1, 1 } })
+    eq(valueBeside("Lowest on the AH"), "Searching...", "not a commodity")
+
+    answerItem(world, sent.itemKey, { false, 250000 })
+    eq(price:GetText(), "25g", "the first with a buyout")
+    press(POST)
+    eq(world.posts[1].kind, "item")
+    eq(world.posts[1].price, 250000)
+    eq(world.posts[1].bid, nil)
+end)
+
+test("a search waits for the throttle, and is sent again when dropped", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list = openQuickSell(ns)
+    world.throttled = true
+    clickRow(list, "Herb")
+    eq(#world.searches, 0, "the server would lose it")
+    world.throttled = false
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(#world.searches, 1)
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED")
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(#world.searches, 2, "dropped, so asked again")
+
+    world.throttled = true
+    answerCommodity(world, 1001, { { 90000, 3 } })
+    eq(rawget(_G, POST).enabled, false, "a listing has to wait too")
+    world.throttled = false
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(rawget(_G, POST).enabled, true)
+end)
+
+test("a suspicious price takes a second press, whatever made it suspicious", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    world.vendorPrices[1002] = 2000
+    local list, _, _, price = openQuickSell(ns)
+
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 100, 1 }, { 90000, 100 } })
+    eq(price:GetText(), "1s")
+    press(POST)
+    eq(#world.posts, 0, "one cheap unit sets the lowest price, far under the usual one")
+    eq(rawget(_G, POST):GetText(), "Confirm")
+    price:SetText("80g")
+    price.scripts.OnTextChanged(price, true)
+    eq(rawget(_G, POST):GetText(), "Post", "changing the price starts over")
+    press(POST)
+    eq(#world.posts, 1, "a normal price needs no confirmation")
+
+    clickRow(list, "Ore")
+    answerCommodity(world, 1002, { { 2000, 500 } })
+    press(POST)
+    eq(#world.posts, 1, "the auction house's cut would make it worth less than the vendor gives")
+    press(POST)
+    eq(#world.posts, 2)
+end)
+
+test("a listing the game wants confirmed goes to the game's own dialog", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    world.postNeedsConfirmation = true
+    local list = openQuickSell(ns)
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 90000, 3 } })
+    press(POST)
+    eq(world.pendingPost.kind, "commodity")
+    eq(world.pendingPost[2], 3, "the duration")
+    eq(world.pendingPost[3], 25, "the quantity")
+    eq(world.pendingPost[4], 90000, "the price")
+end)
+
+test("the list follows the bags, and a chosen item that left them is let go", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list, _, quantity = openQuickSell(ns)
+    clickRow(list, "Herb")
+    world.bags[0][2] = nil
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    eq(rowNames(list), "Herb=20,Ore=7")
+    eq(quantity:GetText(), "20", "no more than what is left")
+    eq(selectedRow(list), "Herb")
+
+    world.bags[0][1] = nil
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    eq(rowNames(list), "Ore=7")
+    eq(selectedRow(list), nil)
+end)
+
+test("nothing else is listed during a multiple listing, which stops when leaving the view", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local cancels = 0
+    local list = openQuickSell(ns)
+    local cancelSell = C_AuctionHouse.CancelSell
+    C_AuctionHouse.CancelSell = function()
+        cancels = cancels + 1
+        cancelSell()
+    end
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 90000, 3 } })
+    eq(rawget(_G, POST).enabled, true)
+    Mock.Fire("AUCTION_MULTISELL_START")
+    eq(rawget(_G, POST).enabled, false, "the game would refuse it")
+    Mock.Fire("AUCTION_MULTISELL_UPDATE", 1, 3)
+    eq(rawget(_G, POST).enabled, false, "one of three")
+    Mock.Fire("AUCTION_MULTISELL_UPDATE", 3, 3)
+    eq(rawget(_G, POST).enabled, true, "done")
+    Mock.Fire("AUCTION_MULTISELL_START")
+    Mock.Fire("AUCTION_MULTISELL_FAILURE")
+    eq(rawget(_G, POST).enabled, true, "failed: over too")
+    eq(cancels, 0)
+
+    Mock.Fire("AUCTION_MULTISELL_START")
+    click(AuctionHouseFrame.Tabs[1])
+    eq(cancels, 1, "left the view during it")
+    click(AuctionHouseFrame.Tabs[2])
+    eq(cancels, 1, "only once")
+end)
+
+test("a listing that locks an item takes it off the list until it comes back", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list = openQuickSell(ns)
+    world.bags[0][3].isLocked = true
+    Mock.Fire("ITEM_LOCK_CHANGED", 0, 3)
+    Mock.RunTimers()
+    eq(rowNames(list), "Herb=25")
+    world.bags[0][3].isLocked = false
+    Mock.Fire("ITEM_LOCK_CHANGED", 0, 3)
+    Mock.RunTimers()
+    eq(rowNames(list), "Herb=25,Ore=7")
+end)
+
+test("the keys work while the view shows, unless turned off, and wait for combat to end", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    openQuickSell(ns)
+    eq(world.bindings.SPACE, "CLICK " .. POST .. ":LeftButton")
+    eq(world.bindings["SHIFT-SPACE"], "CLICK " .. NEXT .. ":LeftButton")
+    eq(world.bindings.BACKSPACE, "CLICK " .. PREVIOUS .. ":LeftButton")
+
+    local ah = AuctionHouseFrame
+    world.inCombat = true
+    click(ah.Tabs[1])
+    eq(world.bindings.SPACE ~= nil, true, "cannot change in combat")
+    world.inCombat = false
+    Mock.Fire("PLAYER_REGEN_ENABLED")
+    eq(next(world.bindings), nil, "released once it is over: Space must jump again")
+
+    click(TradingBookAuctionHouseTab)
+    eq(world.bindings.SPACE ~= nil, true)
+    Mock.SettingsControl("Quick sell keys").setting:SetValue(false)
+    eq(next(world.bindings), nil, "turned off")
+end)
+
+test("the tracking view replaces quick selling and releases the keys", function()
+    local ns, world = Mock.Boot()
+    herbAndOre(world)
+    local list = openQuickSell(ns)
+    local function segment(label)
+        for _, object in ipairs(Mock.Objects()) do
+            if object.kind == "text" and object.text == label then
+                return rawget(object, "parent")
+            end
+        end
+    end
+    local tracking = segment("Tracking")
+    eq(Mock.IsVisible(list), true)
+    tracking.scripts.OnClick(tracking)
+    eq(Mock.IsVisible(list), false)
+    eq(next(world.bindings), nil, "the keys are only taken while selling")
+    local sell = segment("Quick sell")
+    sell.scripts.OnClick(sell)
+    eq(Mock.IsVisible(list), true)
+    eq(world.bindings.SPACE ~= nil, true)
+end)
+
+layoutTest("layout: quick selling fits its labels and buttons", function()
+    local ns, world = layoutFixture()
+    local list = openQuickSell(ns)
+    local first = list.ScrollBox.rendered[1]
+    first.scripts.OnClick(first)
+    answerItem(world, first.data.itemKey, { 99999990000 })
+    local card = Mock.Rect(rawget(rawget(rawget(_G, POST), "parent"), "parent"))
+    local texts = {}
+    for _, object in ipairs(Mock.Objects()) do
+        local parent = rawget(object, "parent")
+        -- The item's name is cut on purpose, like the names in every list.
+        if object.kind == "text" and parent == rawget(rawget(_G, POST), "parent") and object.font ~= "GameFontNormal"
+            and Mock.IsVisible(object) and object.text ~= "" then
+            local rect = Mock.Rect(object)
+            eq(rect.left >= card.left and rect.right <= card.right + 0.01, true, "outside the card: " .. describe(object, rect))
+            eq(object:GetStringWidth() <= rect.right - rect.left + 0.01, true, ("cut: %q"):format(object.text))
+            table.insert(texts, { object = object, rect = rect })
+        end
+    end
+    for i = 1, #texts do
+        for j = i + 1, #texts do
+            eq(overlap(texts[i].rect, texts[j].rect), false,
+                "overlap: " .. describe(texts[i].object, texts[i].rect) .. " and " .. describe(texts[j].object, texts[j].rect))
+        end
+    end
+    for _, name in ipairs({ POST, NEXT, PREVIOUS }) do
+        local button = rawget(_G, name)
+        eq(button:GetStringWidth() <= button.width - 16, true, "button text: " .. button:GetText())
+    end
+    press(POST)
+    local second = list.rows[2]
+    world.vendorPrices[second.itemID] = 500000
+    answerItem(world, second.itemKey, { 1000 })
+    local warning
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and object.text == ns.L["Below the vendor price"] then
+            warning = object
+        end
+    end
+    eq(warning ~= nil, true, "a warning shows")
+    press(POST)
+    local rect = Mock.Rect(warning)
+    eq(warning:GetStringWidth() <= 2 * (rect.right - rect.left), true, ("too long for two lines: %q"):format(warning.text))
 end)
 
 -- Settings ---------------------------------------------------------------------
@@ -3439,8 +3962,9 @@ test("the add-on has a page in the game's options, with every setting", function
         eq(control.tooltip ~= nil, true, "explained: " .. control.setting:GetName())
     end
     eq(table.concat(names, ", "), "checkbox:Minimap icon, checkbox:Item tooltips, "
-        .. "checkbox:Scan the auction house, checkbox:Mail summary, checkbox:Custom window scale, "
-        .. "slider:Window scale")
+        .. "checkbox:Scan the auction house, checkbox:Mail summary, dropdown:Sale duration, "
+        .. "dropdown:Proposed price, checkbox:Next item after posting, checkbox:Quick sell keys, "
+        .. "checkbox:Custom window scale, slider:Window scale")
 
     local custom, slider = scaleControls()
     eq(slider.parent, custom, "the slider depends on the checkbox")

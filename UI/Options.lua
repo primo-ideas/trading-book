@@ -67,6 +67,35 @@ local function RegisterSettings()
     Settings.CreateCheckbox(category, mailSummary,
         L["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."])
 
+    local sellHours = AddSetting("SellHours", L["Sale duration"], Settings.VarType.Number, ns.Selling.DEFAULT_HOURS,
+        ns.Selling.GetDefaultHours, ns.Selling.SetDefaultHours)
+    Settings.CreateDropdown(category, sellHours, function()
+        local container = Settings.CreateControlTextContainer()
+        for _, hours in ipairs(ns.Selling.HOURS) do
+            container:Add(hours, L["%d h"]:format(hours))
+        end
+        return container:GetData()
+    end, L["How long auctions last when quick selling from the Trading Book tab of the auction house."])
+
+    local sellPricing = AddSetting("SellPricing", L["Proposed price"], Settings.VarType.String, ns.Selling.PRICINGS[1].key,
+        ns.Selling.GetPricingKey, ns.Selling.SetPricingKey)
+    Settings.CreateDropdown(category, sellPricing, function()
+        local container = Settings.CreateControlTextContainer()
+        for _, pricing in ipairs(ns.Selling.PRICINGS) do
+            container:Add(pricing.key, pricing.label)
+        end
+        return container:GetData()
+    end, L["The price quick selling proposes, against the lowest one on sale."])
+
+    local sellNext = AddSetting("SellAutoNext", L["Next item after posting"], Settings.VarType.Boolean, true,
+        ns.Selling.IsAutoNextEnabled, ns.Selling.SetAutoNextEnabled)
+    Settings.CreateCheckbox(category, sellNext, L["Moves on to the next item of the list once an item is posted."])
+
+    local sellKeys = AddSetting("SellShortcuts", L["Quick sell keys"], Settings.VarType.Boolean, true,
+        ns.Selling.AreShortcutsEnabled, ns.Selling.SetShortcutsEnabled)
+    Settings.CreateCheckbox(category, sellKeys,
+        L["While quick selling, Space posts, Shift-Space goes to the next item and Backspace to the previous one."])
+
     -- A scale of its own starts from the game's, so that turning it on changes nothing yet.
     local ownScale = AddSetting("OwnScale", L["Custom window scale"], Settings.VarType.Boolean, false,
         function()

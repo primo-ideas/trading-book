@@ -28,7 +28,7 @@ local NO_OP_METHODS = {
     "SetWordWrap", "SetAutoFocus", "SetFixedFrameStrata",
     "SetFixedFrameLevel", "RegisterForClicks", "SetHighlightTexture",
     "LockHighlight", "UnlockHighlight", "SetThickness", "SetPortraitToAsset",
-    "SetMultiLine", "SetMaxLetters", "SetFontObject", "ClearFocus",
+    "SetMultiLine", "SetMaxLetters", "SetFontObject", "ClearFocus", "SetNumeric",
 }
 
 -- Fields that may be read before being set, or never set, on a widget.
@@ -36,7 +36,7 @@ local OPTIONAL_FIELDS = {
     cells = true, markers = true, Stripe = true, Icon = true, data = true, bar = true,
     scrollChild = true, focused = true, highlighted = true,
     Text = true, Value = true, Bar = true, Inset = true, header = true, onEnter = true,
-    displayMode = true, selected = true,
+    displayMode = true, selected = true, onClick = true, isSelected = true,
     OnSlotLeave = true, Empty = true, Label = true,
 }
 
@@ -94,7 +94,13 @@ function Object:Show()
         self.scripts.OnShow(self)
     end
 end
-function Object:Hide() self.shown = false end
+function Object:Hide()
+    local wasShown = self.shown
+    self.shown = false
+    if wasShown and self.scripts.OnHide then
+        self.scripts.OnHide(self)
+    end
+end
 function Object:SetShown(shown) if shown then self:Show() else self:Hide() end end
 function Object:IsShown() return self.shown end
 function Object:SetText(text) self.text = text end
@@ -349,6 +355,7 @@ local TEMPLATES = {
     end,
     PanelTabButtonTemplate = TabTemplate,
     AuctionHouseFrameDisplayModeTabTemplate = TabTemplate,
+    InputBoxTemplate = true,
     -- Its label uses GameFontNormal.
     UIPanelButtonTemplate = function(frame)
         frame.font = "GameFontNormal"
@@ -571,6 +578,22 @@ local function InstallApi()
             table.insert(category.subcategories, subcategory)
             return subcategory, {}
         end,
+        CreateControlTextContainer = function()
+            local container = { data = {} }
+            function container:Add(value, label)
+                assert(value ~= nil and type(label) == "string")
+                table.insert(self.data, { value = value, label = label })
+            end
+            function container:GetData() return self.data end
+            return container
+        end,
+        CreateDropdown = function(category, setting, options, tooltip)
+            assert(type(options) == "function", "Dropdown options must be a function")
+            for _, option in ipairs(options()) do
+                assert(type(option.value) == setting:GetVariableType(), "Dropdown option of the wrong type")
+            end
+            return AddControl(category, "dropdown", setting, options, tooltip)
+        end,
         RegisterAddOnCategory = function(category) category.registered = true end,
         OpenToCategory = function(categoryID)
             assert(type(categoryID) == "number")
@@ -632,6 +655,11 @@ local function InstallApi()
 
     G.C_Item = {
         DoesItemExist = function(location) return SplitBagSlot(location) ~= nil end,
+        -- Only the vendor price is read: the eleventh value.
+        GetItemInfo = function(link)
+            local itemID = tonumber(link:match("item:(%d+)"))
+            return "Item", link, 1, 1, 1, "", "", 1, "", 1, world.vendorPrices[itemID] or 0
+        end,
         GetItemID = function(location) return SplitBagSlot(location).itemID end,
         GetItemName = function(location) return SplitBagSlot(location).itemName end,
         GetItemLink = function(location) return SplitBagSlot(location).hyperlink end,
@@ -640,6 +668,10 @@ local function InstallApi()
         GetItemQualityByID = function() return nil end,
         GetItemIconByID = function(id) return id and (1000 + id) or nil end,
         GetItemInfoInstant = function(name)
+            local linked = tonumber(name:match("item:(%d+)"))
+            if linked then
+                return linked, "", "", "", 1000 + linked, world.itemClasses[linked] or 7
+            end
             for id, cached in pairs(world.itemCache) do
                 if cached == name then return id end
             end
@@ -647,7 +679,10 @@ local function InstallApi()
     }
 
     G.Enum = {
-        AuctionHouseSortOrder = { Price = 0, Name = 1 },
+        AuctionHouseSortOrder = { Price = 0, Name = 1, Buyout = 4 },
+        ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 },
+        ItemQuality = { Poor = 0, Common = 1 },
+        ItemClass = { Weapon = 2, Armor = 4 },
         AuctionStatus = { Active = 0, Sold = 1 },
         BankType = { Character = 0, Guild = 1, Account = 2 },
         TooltipDataType = { Item = TOOLTIP_DATA_ITEM, Spell = 1, Unit = 2 },
@@ -656,6 +691,21 @@ local function InstallApi()
             CharacterBankTab_1 = 6, CharacterBankTab_2 = 7, AccountBankTab_1 = 12,
         },
     }
+
+    G.ItemLocation = {
+        CreateFromBagAndSlot = function(_, bag, slot) return { bag = bag, slot = slot } end,
+    }
+    G.InCombatLockdown = function() return world.inCombat == true end
+    G.SetOverrideBinding = function(owner, _, key, command)
+        assert(owner ~= nil and type(key) == "string" and command:find("^CLICK .+:LeftButton$"))
+        assert(not world.inCombat, "Key bindings cannot change in combat")
+        world.bindings[key] = command
+    end
+    G.ClearOverrideBindings = function(owner)
+        assert(owner ~= nil)
+        assert(not world.inCombat, "Key bindings cannot change in combat")
+        world.bindings = {}
+    end
 
     G.C_Container = {
         GetContainerNumSlots = function(bagID)
@@ -678,8 +728,76 @@ local function InstallApi()
     }
 
     G.C_AuctionHouse = {
-        PostItem = function() return false end,
-        PostCommodity = function() return false end,
+        -- Each returns whether the game wants the listing confirmed.
+        PostItem = function(location, duration, quantity, bid, buyout)
+            table.insert(world.posts, {
+                kind = "item", location = location, duration = duration, quantity = quantity, bid = bid, price = buyout,
+            })
+            return world.postNeedsConfirmation == true
+        end,
+        PostCommodity = function(location, duration, quantity, unitPrice)
+            table.insert(world.posts, {
+                kind = "commodity", location = location, duration = duration, quantity = quantity, price = unitPrice,
+            })
+            return world.postNeedsConfirmation == true
+        end,
+        IsSellItemValid = function(location, displayError)
+            assert(displayError == false, "Checking a whole bag must not print errors")
+            local item = SplitBagSlot(location)
+            return item ~= nil and not item.notSellable
+        end,
+        GetItemCommodityStatus = function(location)
+            return SplitBagSlot(location).commodityStatus
+        end,
+        GetItemKeyFromItem = function(location)
+            local item = SplitBagSlot(location)
+            return { itemID = item.itemID, itemLevel = item.itemLevel or 0, itemSuffix = 0, battlePetSpeciesID = 0 }
+        end,
+        MakeItemKey = function(itemID)
+            return { itemID = itemID, itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 }
+        end,
+        -- All of an item the bags hold, whatever the stack it is read from.
+        GetAvailablePostCount = function(location)
+            local total, itemID = 0, SplitBagSlot(location).itemID
+            for _, slots in pairs(world.bags) do
+                for _, item in pairs(slots) do
+                    if item.itemID == itemID then
+                        total = total + item.stackCount
+                    end
+                end
+            end
+            return total
+        end,
+        IsThrottledMessageSystemReady = function() return not world.throttled end,
+        SendSearchQuery = function(itemKey, sorts, separateOwnerItems)
+            assert(type(sorts) == "table" and sorts[1].sortOrder ~= nil and separateOwnerItems ~= nil)
+            assert(not world.throttled, "A search sent while throttled is lost")
+            table.insert(world.searches, { kind = "commodity", itemKey = itemKey, sortOrder = sorts[1].sortOrder })
+        end,
+        SendSellSearchQuery = function(itemKey, sorts, separateOwnerItems)
+            assert(type(sorts) == "table" and sorts[1].sortOrder ~= nil and separateOwnerItems ~= nil)
+            assert(not world.throttled, "A search sent while throttled is lost")
+            table.insert(world.searches, { kind = "item", itemKey = itemKey, sortOrder = sorts[1].sortOrder })
+        end,
+        GetCommoditySearchResultsQuantity = function(itemID)
+            local total = 0
+            for _, result in ipairs(world.commodityResults[itemID] or {}) do
+                total = total + result.quantity
+            end
+            return total
+        end,
+        GetNumCommoditySearchResults = function(itemID)
+            return #(world.commodityResults[itemID] or {})
+        end,
+        GetCommoditySearchResultInfo = function(itemID, index)
+            return world.commodityResults[itemID][index]
+        end,
+        GetNumItemSearchResults = function(itemKey)
+            return #(world.itemResults[itemKey.itemID] or {})
+        end,
+        GetItemSearchResultInfo = function(itemKey, index)
+            return world.itemResults[itemKey.itemID][index]
+        end,
         ConfirmPostItem = function() end,
         ConfirmPostCommodity = function() end,
         CancelSell = function() end,
@@ -860,6 +978,9 @@ function Mock.LoadAuctionHouseUI()
     end
     frame.BuyMode = modes[1]
     frame.numTabs = 3
+    -- The game's own dialog reads a listing to confirm back from these.
+    frame.ItemSellFrame = { CachePendingPost = function(_, ...) world.pendingPost = { kind = "item", ... } end }
+    frame.CommoditiesSellFrame = { CachePendingPost = function(_, ...) world.pendingPost = { kind = "commodity", ... } end }
     frame:SetDisplayMode(frame.BuyMode)
     rawset(realG, "AuctionHouseFrame", frame)
     Mock.Fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")
@@ -929,7 +1050,12 @@ function Mock.SetBagItem(bag, slot, itemID, name, count, options)
         quality = options.quality or 1,
         iconFileID = 1000 + itemID,
         isBound = options.isBound or false,
+        isLocked = options.isLocked or false,
+        itemLevel = options.itemLevel,
+        notSellable = options.notSellable,
+        commodityStatus = options.commodityStatus or (options.commodity and 2 or 1),
     }
+    world.itemClasses[itemID] = options.equipment and 4 or world.itemClasses[itemID]
 end
 
 -- Loads the addon as the client would, on a clean client.
@@ -969,6 +1095,13 @@ function Mock.Boot(options)
         replicate = {},
         replicateRequests = 0,
         replicateReads = 0,
+        posts = {},
+        searches = {},
+        commodityResults = {},
+        itemResults = {},
+        vendorPrices = {},
+        itemClasses = {},
+        bindings = {},
     }
     objects = {}
 
