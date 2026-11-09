@@ -4,7 +4,8 @@ local UI = ns.UI
 local Colors = UI.Colors
 
 -- A Trading Book tab in the auction house window: when the auction house was last
--- scanned, a button to scan it, the account's undercut auctions and the watched items.
+-- scanned and a button to scan it, above quick selling or the tracking of the
+-- account's undercut auctions and watched items.
 --
 -- The game's tab list stays untouched: changing it, or selecting a tab through the
 -- PanelTemplates functions, taints the auction house and reaches the player's bags
@@ -24,9 +25,16 @@ local STATUS_HEIGHT = 40
 local SCAN_BUTTON_WIDTH, SCAN_BUTTON_HEIGHT = 220, 24
 local STATUS_REFRESH_SECONDS = 1
 
+local VIEWS = {
+    { value = "sell", label = L["Quick sell"] },
+    { value = "track", label = L["Tracking"] },
+}
+
 local panel = nil
 local lastScan, scanState, scanButton = nil, nil, nil
 local undercutTable, watchTable = nil, nil
+local viewFrames = {}
+local selectedView = VIEWS[1].value
 
 -- Scan status -------------------------------------------------------------------------
 
@@ -108,10 +116,69 @@ local function ShowWatchTooltip(owner, row)
     GameTooltip:Show()
 end
 
-local function CreateTitle(text)
-    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+local function ApplyView()
+    for key, frame in pairs(viewFrames) do
+        frame:SetShown(key == selectedView)
+    end
+    UI.SetQuickSellActive(panel:IsShown() and selectedView == "sell")
+end
+
+local function CreateTitle(parent, text)
+    local title = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     title:SetText(text)
     return title
+end
+
+-- The undercut auctions above the watched items, sharing the height of the view.
+local function CreateTrackingView(viewHeight)
+    local view = CreateFrame("Frame", nil, panel)
+    local listHeight = (viewHeight - 2 * TITLE_HEIGHT - GAP) / 2
+
+    local undercutTitle = CreateTitle(view, L["Undercut auctions"])
+    undercutTitle:SetPoint("TOPLEFT", view, "TOPLEFT")
+    undercutTable = UI.CreateTable(view, {
+        columns = {
+            { key = "name", title = L["Item"], width = 262, item = true, ascendingFirst = true,
+                sort = function(row) return row.name and row.name:lower() end },
+            { key = "qty", title = L["Qty"], width = 50, align = "RIGHT",
+                text = function(row) return ns.FormatCount(row.qty) end },
+            { key = "unit", title = L["Unit price"], width = 110, align = "RIGHT",
+                text = function(row) return ns.FormatMoney(row.unit) end },
+            { key = "lowest", title = L["Lowest on the AH"], width = 160, align = "RIGHT",
+                text = function(row) return ns.FormatMoney(row.lowest) end,
+                color = function() return Colors.loss end },
+            { key = "char", title = L["Character"], width = 100, gapBefore = 10, ascendingFirst = true,
+                sort = function(row) return ns.CharacterName(row.char) end,
+                text = function(row) return ns.ColoredCharacterName(row.char) end },
+        },
+        sort = { key = "name", ascending = true },
+        onEnter = ShowUndercutTooltip,
+    })
+    undercutTable:SetPoint("TOPLEFT", view, "TOPLEFT", 0, -TITLE_HEIGHT)
+    undercutTable:SetPoint("TOPRIGHT", view, "TOPRIGHT", 0, -TITLE_HEIGHT)
+    undercutTable:SetHeight(listHeight)
+
+    local watchTop = TITLE_HEIGHT + listHeight + GAP
+    local watchTitle = CreateTitle(view, L["Watched items"])
+    watchTitle:SetPoint("TOPLEFT", view, "TOPLEFT", 0, -watchTop)
+    watchTable = UI.CreateTable(view, {
+        columns = {
+            { key = "name", title = L["Item"], width = 200, item = true, ascendingFirst = true,
+                sort = function(row) return row.name and row.name:lower() end },
+            { key = "below", title = L["Buy target"], width = 170, align = "RIGHT",
+                text = function(row) return ns.FormatMoney(row.below) end },
+            { key = "above", title = L["Sell target"], width = 170, align = "RIGHT",
+                text = function(row) return ns.FormatMoney(row.above) end },
+            { key = "price", title = L["Lowest on the AH"], width = 160, align = "RIGHT",
+                text = function(row) return ns.FormatMoney(row.price) end,
+                color = function(row) return row.reached and Colors.gain or nil end },
+        },
+        sort = { key = "name", ascending = true },
+        onEnter = ShowWatchTooltip,
+    })
+    watchTable:SetPoint("TOPLEFT", view, "TOPLEFT", 0, -watchTop - TITLE_HEIGHT)
+    watchTable:SetPoint("BOTTOMRIGHT", view, "BOTTOMRIGHT")
+    return view
 end
 
 -- Panel -------------------------------------------------------------------------------
@@ -132,8 +199,14 @@ local function CreatePanel()
         RefreshStatus()
     end)
 
+    local segments = UI.CreateSegments(panel, VIEWS, selectedView, function(value)
+        selectedView = value
+        ApplyView()
+    end)
+    segments:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -PADDING)
+
     lastScan = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    lastScan:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -PADDING)
+    lastScan:SetPoint("TOPLEFT", segments, "TOPRIGHT", GAP, 0)
     lastScan:SetPoint("RIGHT", scanButton, "LEFT", -GAP, 0)
     lastScan:SetJustifyH("LEFT")
     scanState = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -141,55 +214,15 @@ local function CreatePanel()
     scanState:SetPoint("RIGHT", scanButton, "LEFT", -GAP, 0)
     scanState:SetJustifyH("LEFT")
 
-    -- Two lists one under the other, sharing what is left of the height.
-    local listsTop = PADDING + STATUS_HEIGHT + GAP
+    -- Each view takes what is left of the panel, below the status.
+    local viewsTop = PADDING + STATUS_HEIGHT + GAP
     local panelHeight = AuctionHouseFrame:GetHeight() + PANEL_TOP - PANEL_BOTTOM
-    local listHeight = (panelHeight - listsTop - PADDING - 2 * TITLE_HEIGHT - GAP) / 2
-
-    local undercutTitle = CreateTitle(L["Undercut auctions"])
-    undercutTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -listsTop)
-    undercutTable = UI.CreateTable(panel, {
-        columns = {
-            { key = "name", title = L["Item"], width = 262, item = true, ascendingFirst = true,
-                sort = function(row) return row.name and row.name:lower() end },
-            { key = "qty", title = L["Qty"], width = 50, align = "RIGHT",
-                text = function(row) return ns.FormatCount(row.qty) end },
-            { key = "unit", title = L["Unit price"], width = 110, align = "RIGHT",
-                text = function(row) return ns.FormatMoney(row.unit) end },
-            { key = "lowest", title = L["Lowest on the AH"], width = 160, align = "RIGHT",
-                text = function(row) return ns.FormatMoney(row.lowest) end,
-                color = function() return Colors.loss end },
-            { key = "char", title = L["Character"], width = 100, gapBefore = 10, ascendingFirst = true,
-                sort = function(row) return ns.CharacterName(row.char) end,
-                text = function(row) return ns.ColoredCharacterName(row.char) end },
-        },
-        sort = { key = "name", ascending = true },
-        onEnter = ShowUndercutTooltip,
-    })
-    undercutTable:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -listsTop - TITLE_HEIGHT)
-    undercutTable:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PADDING, -listsTop - TITLE_HEIGHT)
-    undercutTable:SetHeight(listHeight)
-
-    local watchTop = listsTop + TITLE_HEIGHT + listHeight + GAP
-    local watchTitle = CreateTitle(L["Watched items"])
-    watchTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -watchTop)
-    watchTable = UI.CreateTable(panel, {
-        columns = {
-            { key = "name", title = L["Item"], width = 200, item = true, ascendingFirst = true,
-                sort = function(row) return row.name and row.name:lower() end },
-            { key = "below", title = L["Buy target"], width = 170, align = "RIGHT",
-                text = function(row) return ns.FormatMoney(row.below) end },
-            { key = "above", title = L["Sell target"], width = 170, align = "RIGHT",
-                text = function(row) return ns.FormatMoney(row.above) end },
-            { key = "price", title = L["Lowest on the AH"], width = 160, align = "RIGHT",
-                text = function(row) return ns.FormatMoney(row.price) end,
-                color = function(row) return row.reached and Colors.gain or nil end },
-        },
-        sort = { key = "name", ascending = true },
-        onEnter = ShowWatchTooltip,
-    })
-    watchTable:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -watchTop - TITLE_HEIGHT)
-    watchTable:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PADDING, PADDING)
+    viewFrames.track = CreateTrackingView(panelHeight - viewsTop - PADDING)
+    viewFrames.sell = UI.CreateQuickSellView(panel)
+    for _, frame in pairs(viewFrames) do
+        frame:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -viewsTop)
+        frame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PADDING, PADDING)
+    end
 
     -- The wait before the next scan counts down while the panel shows.
     local elapsed = 0
@@ -200,7 +233,14 @@ local function CreatePanel()
             RefreshStatus()
         end
     end)
-    panel:SetScript("OnShow", Refresh)
+    panel:SetScript("OnShow", function()
+        ApplyView()
+        Refresh()
+    end)
+    panel:SetScript("OnHide", function()
+        UI.SetQuickSellActive(false)
+    end)
+    ApplyView()
 end
 
 -- Tab ---------------------------------------------------------------------------------

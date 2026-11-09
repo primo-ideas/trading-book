@@ -433,6 +433,16 @@ local function BuildRow(tbl, row)
             GameTooltip:Hide()
         end)
     end
+    if tbl.onClick then
+        row:SetScript("OnClick", function(self)
+            tbl.onClick(self, self.data)
+        end)
+    end
+    if tbl.isSelected then
+        row.Selected = row:CreateTexture(nil, "BORDER")
+        row.Selected:SetAllPoints()
+        row.Selected:SetColorTexture(Colors.accent[1], Colors.accent[2], Colors.accent[3], 0.2)
+    end
 end
 
 local function InitRow(tbl, row, data)
@@ -441,6 +451,9 @@ local function InitRow(tbl, row, data)
     end
     row.data = data
     row.Stripe:SetShown(data.position % 2 == 0)
+    if tbl.isSelected then
+        row.Selected:SetShown(tbl.isSelected(data))
+    end
     for index, column in ipairs(tbl.columns) do
         local cell = row.cells[index]
         local color
@@ -471,7 +484,8 @@ end
 --     gapBefore = extra space on its left? }
 -- An item column draws the icon and quality-coloured name of row.itemID. A marker
 -- is a small coloured square before the text, which always remains to name it.
--- spec.sort = { key, ascending }; spec.onEnter = fn(rowFrame, row)
+-- spec.sort = { key, ascending }; spec.onEnter and spec.onClick = fn(rowFrame, row);
+-- spec.isSelected = fn(row) marks the rows it answers true for.
 function UI.CreateTable(parent, spec)
     local tbl = UI.CreateCard(parent)
     for name, method in pairs(TableMixin) do
@@ -479,6 +493,8 @@ function UI.CreateTable(parent, spec)
     end
     tbl.columns = spec.columns
     tbl.onEnter = spec.onEnter
+    tbl.onClick = spec.onClick
+    tbl.isSelected = spec.isSelected
     tbl.rows = {}
     tbl.sortAscending = spec.sort.ascending
 
