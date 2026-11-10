@@ -116,6 +116,7 @@ end
 function Object:SetChecked(checked) self.checked = checked end
 function Object:SetScrollChild(child) self.scrollChild = child end
 function Object:SetFocus() self.focused = true end
+function Object:HasFocus() return rawget(self, "focused") == true end
 function Object:HighlightText() self.highlighted = true end
 function Object:GetChecked() return self.checked end
 function Object:SetScript(name, fn) self.scripts[name] = fn end
@@ -655,11 +656,17 @@ local function InstallApi()
 
     G.C_Item = {
         DoesItemExist = function(location) return SplitBagSlot(location) ~= nil end,
-        -- Only the vendor price is read: the eleventh value.
-        GetItemInfo = function(link)
-            local itemID = tonumber(link:match("item:(%d+)"))
-            return "Item", link, 1, 1, 1, "", "", 1, "", 1, world.vendorPrices[itemID] or 0
+        -- Nothing until the item has loaded. Only the vendor price, the eleventh value,
+        -- and the kind of binding, the fourteenth, are read.
+        GetItemInfo = function(item)
+            local itemID = type(item) == "number" and item or tonumber(item:match("item:(%d+)"))
+            if world.unloadedItems[itemID] then
+                return nil
+            end
+            return "Item", tostring(item), 1, 1, 1, "", "", 1, "", 1, world.vendorPrices[itemID] or 0,
+                7, 0, world.itemBinds[itemID] or 0
         end,
+        RequestLoadItemDataByID = function(itemID) world.itemLoads[itemID] = true end,
         GetItemID = function(location) return SplitBagSlot(location).itemID end,
         GetItemName = function(location) return SplitBagSlot(location).itemName end,
         GetItemLink = function(location) return SplitBagSlot(location).hyperlink end,
@@ -683,6 +690,8 @@ local function InstallApi()
         ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 },
         ItemQuality = { Poor = 0, Common = 1 },
         ItemClass = { Weapon = 2, Armor = 4 },
+        ItemBind = { None = 0, OnAcquire = 1, OnEquip = 2, OnUse = 3, Quest = 4 },
+        CraftingReagentType = { Modifying = 0, Basic = 1, Finishing = 2, Automatic = 3 },
         AuctionStatus = { Active = 0, Sold = 1 },
         BankType = { Character = 0, Guild = 1, Account = 2 },
         TooltipDataType = { Item = TOOLTIP_DATA_ITEM, Spell = 1, Unit = 2 },
@@ -706,6 +715,17 @@ local function InstallApi()
         assert(not world.inCombat, "Key bindings cannot change in combat")
         world.bindings = {}
     end
+
+    G.C_TradeSkillUI = {
+        GetRecipesTracked = function(isRecraft)
+            assert(type(isRecraft) == "boolean")
+            return isRecraft and world.trackedRecrafts or world.trackedRecipes
+        end,
+        GetRecipeSchematic = function(recipeID, isRecraft)
+            assert(type(isRecraft) == "boolean")
+            return assert(world.recipes[recipeID], "No such recipe")
+        end,
+    }
 
     G.C_Container = {
         GetContainerNumSlots = function(bagID)
@@ -769,6 +789,18 @@ local function InstallApi()
             return total
         end,
         IsThrottledMessageSystemReady = function() return not world.throttled end,
+        StartCommoditiesPurchase = function(itemID, quantity)
+            table.insert(world.purchaseSteps, "start " .. itemID .. " x" .. quantity)
+        end,
+        ConfirmCommoditiesPurchase = function(itemID, quantity)
+            table.insert(world.purchaseSteps, "confirm " .. itemID .. " x" .. quantity)
+        end,
+        CancelCommoditiesPurchase = function()
+            table.insert(world.purchaseSteps, "cancel")
+        end,
+        PlaceBid = function(auctionID, bidAmount)
+            table.insert(world.purchaseSteps, "bid " .. auctionID .. " for " .. bidAmount)
+        end,
         SendSearchQuery = function(itemKey, sorts, separateOwnerItems)
             assert(type(sorts) == "table" and sorts[1].sortOrder ~= nil and separateOwnerItems ~= nil)
             assert(not world.throttled, "A search sent while throttled is lost")
@@ -1102,6 +1134,13 @@ function Mock.Boot(options)
         vendorPrices = {},
         itemClasses = {},
         bindings = {},
+        trackedRecipes = {},
+        trackedRecrafts = {},
+        recipes = {},
+        itemBinds = {},
+        itemLoads = {},
+        unloadedItems = {},
+        purchaseSteps = {},
     }
     objects = {}
 

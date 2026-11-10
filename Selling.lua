@@ -181,33 +181,27 @@ end
 -- One search at a time: choosing another item replaces it.
 local search = nil
 
-local function SendSearch()
-    if not search or search.sent or not C_AuctionHouse.IsThrottledMessageSystemReady() then
-        return
-    end
-    search.sent = true
-    local item = search.item
-    if item.isCommodity then
-        C_AuctionHouse.SendSearchQuery(C_AuctionHouse.MakeItemKey(item.itemID), COMMODITY_SORTS, true)
-    else
-        C_AuctionHouse.SendSellSearchQuery(item.itemKey, ITEM_SORTS, true)
-    end
-end
-
 -- onResult(lowest, isOwnLowest, floor) comes once the auction house answered, with a
 -- nil lowest when nothing is on sale.
 function Selling.Search(item, onResult)
     search = { item = item, onResult = onResult }
-    SendSearch()
+    ns.Market.SendQuery(function()
+        if item.isCommodity then
+            C_AuctionHouse.SendSearchQuery(C_AuctionHouse.MakeItemKey(item.itemID), COMMODITY_SORTS, true)
+        else
+            C_AuctionHouse.SendSellSearchQuery(item.itemKey, ITEM_SORTS, true)
+        end
+    end)
 end
 
 function Selling.CancelSearch()
     search = nil
+    ns.Market.CancelQuery()
 end
 
 local function Answer(lowest, isOwnLowest, floor)
     local onResult = search.onResult
-    search = nil
+    Selling.CancelSearch()
     onResult(lowest, isOwnLowest, floor)
 end
 
@@ -254,15 +248,6 @@ ns.OnEvent("ITEM_SEARCH_RESULTS_UPDATED", function(itemKey)
         end
     end
     Answer(nil)
-end)
-
-ns.OnEvent("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", SendSearch)
-
--- A search the server dropped is sent again when it can take one.
-ns.OnEvent("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED", function()
-    if search then
-        search.sent = false
-    end
 end)
 
 -- Listing ----------------------------------------------------------------------------

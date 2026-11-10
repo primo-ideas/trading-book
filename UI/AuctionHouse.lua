@@ -4,8 +4,8 @@ local UI = ns.UI
 local Colors = UI.Colors
 
 -- A Trading Book tab in the auction house window: when the auction house was last
--- scanned and a button to scan it, above quick selling or the tracking of the
--- account's undercut auctions and watched items.
+-- scanned and a button to scan it, above quick selling, the shopping list of the
+-- tracked recipes, or the tracking of undercut auctions and watched items.
 --
 -- The game's tab list stays untouched: changing it, or selecting a tab through the
 -- PanelTemplates functions, taints the auction house and reaches the player's bags
@@ -22,11 +22,12 @@ local PADDING = 12
 local GAP = 10
 local TITLE_HEIGHT = 20
 local STATUS_HEIGHT = 40
-local SCAN_BUTTON_WIDTH, SCAN_BUTTON_HEIGHT = 220, 24
+local SCAN_BUTTON_WIDTH, SCAN_BUTTON_HEIGHT = 120, 24
 local STATUS_REFRESH_SECONDS = 1
 
 local VIEWS = {
     { value = "sell", label = L["Quick sell"] },
+    { value = "buy", label = L["Purchases"] },
     { value = "track", label = L["Tracking"] },
 }
 
@@ -120,7 +121,17 @@ local function ApplyView()
     for key, frame in pairs(viewFrames) do
         frame:SetShown(key == selectedView)
     end
-    UI.SetQuickSellActive(panel:IsShown() and selectedView == "sell")
+    -- The view being left goes first, as the views share the auction house's queries.
+    local shown = panel:IsShown()
+    local activators = { sell = UI.SetQuickSellActive, buy = UI.SetShoppingActive }
+    for key, setActive in pairs(activators) do
+        if not (shown and key == selectedView) then
+            setActive(false)
+        end
+    end
+    if shown and activators[selectedView] then
+        activators[selectedView](true)
+    end
 end
 
 local function CreateTitle(parent, text)
@@ -193,7 +204,7 @@ local function CreatePanel()
     scanButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     scanButton:SetSize(SCAN_BUTTON_WIDTH, SCAN_BUTTON_HEIGHT)
     scanButton:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PADDING, -PADDING)
-    scanButton:SetText(L["Scan the auction house"])
+    scanButton:SetText(L["Scan"])
     scanButton:SetScript("OnClick", function()
         ns.Market.Scan(true)
         RefreshStatus()
@@ -219,6 +230,7 @@ local function CreatePanel()
     local panelHeight = AuctionHouseFrame:GetHeight() + PANEL_TOP - PANEL_BOTTOM
     viewFrames.track = CreateTrackingView(panelHeight - viewsTop - PADDING)
     viewFrames.sell = UI.CreateQuickSellView(panel)
+    viewFrames.buy = UI.CreateShoppingView(panel)
     for _, frame in pairs(viewFrames) do
         frame:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING, -viewsTop)
         frame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PADDING, PADDING)
@@ -239,6 +251,7 @@ local function CreatePanel()
     end)
     panel:SetScript("OnHide", function()
         UI.SetQuickSellActive(false)
+        UI.SetShoppingActive(false)
     end)
     ApplyView()
 end
