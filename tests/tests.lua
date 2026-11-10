@@ -3332,7 +3332,7 @@ test("the auction house tab shows the scan, the undercut auctions and the watche
     local lastScan, state, button = auctionHouseStatus(panel)
     eq(lastScan, "Last scan: 11/05 12:00")
     eq(state, "Next scan in 15 min")
-    eq(button:GetText(), "Scan the auction house")
+    eq(button:GetText(), "Scan")
     eq(button.enabled, false, "the game would refuse it")
 
     local undercut, watched = tables[1], tables[2]
@@ -3400,7 +3400,7 @@ layoutTest("layout: the auction house tab fits its texts", function()
             eq(object:GetStringWidth() <= rect.right - rect.left + 0.01, true, ("cut: %q"):format(object.text))
         end
     end
-    eq(#tables, 3)
+    eq(#tables, 5)
     for _, tbl in ipairs(tables) do
         local list = Mock.Rect(tbl.ScrollBox)
         eq(Mock.Rect(tbl).bottom >= bounds.bottom - 0.01, true, "table below the panel")
@@ -3487,7 +3487,10 @@ end
 local function answerItem(world, itemKey, buyouts, own)
     local results = {}
     for index, buyout in ipairs(buyouts) do
-        results[index] = { buyoutAmount = buyout or nil, itemKey = itemKey, containsOwnerItem = own or false }
+        results[index] = {
+            buyoutAmount = buyout or nil, itemKey = itemKey, containsOwnerItem = own or false,
+            auctionID = 900 + index, quantity = 1,
+        }
     end
     world.itemResults[itemKey.itemID] = results
     Mock.Fire("ITEM_SEARCH_RESULTS_UPDATED", itemKey)
@@ -3867,7 +3870,7 @@ test("the keys work while the view shows, unless turned off, and wait for combat
 
     click(TradingBookAuctionHouseTab)
     eq(world.bindings.SPACE ~= nil, true)
-    Mock.SettingsControl("Quick sell keys").setting:SetValue(false)
+    Mock.SettingsControl("Trading Book tab keys").setting:SetValue(false)
     eq(next(world.bindings), nil, "turned off")
 end)
 
@@ -3938,6 +3941,552 @@ layoutTest("layout: quick selling fits its labels and buttons", function()
     eq(warning:GetStringWidth() <= 2 * (rect.right - rect.left), true, ("too long for two lines: %q"):format(warning.text))
 end)
 
+-- Shopping list -------------------------------------------------------------------------
+
+local FINISHING = 2
+local BUY = "TradingBookShoppingBuy"
+
+-- Tracks a recipe. slots: { item or list of qualities, quantity, reagent type? }.
+local function trackRecipe(world, recipeID, name, outputItemID, slots, options)
+    options = options or {}
+    local schematics = {}
+    for index, slot in ipairs(slots) do
+        local reagents = {}
+        for tier, itemID in ipairs(type(slot[1]) == "table" and slot[1] or { slot[1] }) do
+            reagents[tier] = { itemID = itemID }
+        end
+        schematics[index] = {
+            reagents = reagents, quantityRequired = slot[2], reagentType = slot[3] or 1, variableQuantities = slot[4] or {},
+        }
+    end
+    world.recipes[recipeID] = {
+        name = name, icon = 1, outputItemID = outputItemID, quantityMin = options.outputQuantity or 1,
+        reagentSlotSchematics = schematics,
+    }
+    table.insert(options.recraft and world.trackedRecrafts or world.trackedRecipes, recipeID)
+end
+
+local function clickText(text)
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "frame" and rawget(object, "frameType") == "Button" and rawget(object, "text") == text
+            and object.scripts.OnClick then
+            object.scripts.OnClick(object)
+            return object
+        end
+    end
+    error("No button reading " .. text)
+end
+
+-- Opens the Purchases view, and returns the recipes, the list and the game's window.
+local function openShopping(ns)
+    local tables = captureTables(ns)
+    local ah = Mock.LoadAuctionHouseUI()
+    Mock.Fire("AUCTION_HOUSE_SHOW")
+    Mock.RunTimers()
+    click(TradingBookAuctionHouseTab)
+    for _, object in ipairs(Mock.Objects()) do
+        local parent = rawget(object, "parent")
+        if object.kind == "text" and object.text == ns.L["Purchases"] and parent and rawget(parent, "Underline") then
+            click(parent)
+        end
+    end
+    Mock.RunTimers()
+    return tables[4], tables[5], ah
+end
+
+local function refreshShopping()
+    Mock.RunTimers()
+end
+
+-- Each component as name=need/have/buy.
+local function listText(list)
+    local parts = {}
+    for _, row in ipairs(list.rows) do
+        table.insert(parts, tostring(row.name or row.itemID) .. "=" .. row.need .. "/" .. row.have .. "/" .. row.buy)
+    end
+    return table.concat(parts, ",")
+end
+
+local function shoppingRow(list, itemID)
+    for _, row in ipairs(list.rows) do
+        if row.itemID == itemID then
+            return row
+        end
+    end
+end
+
+local function textShowing(part)
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and has(tostring(object.text), part) and Mock.IsVisible(object) then
+            return object.text
+        end
+    end
+end
+
+local function remember(ns)
+    for itemID, name in pairs({ [1001] = "Herb", [1002] = "Ore", [1003] = "Gem", [5001] = "Flask", [6001] = "Soul dust" }) do
+        ns.RememberItem(itemID, name, 1, 1)
+    end
+end
+
+local function shoppingBoxes()
+    local boxes = Mock.FindFrames("InputBoxTemplate")
+    return boxes[3], boxes[4]
+end
+
+test("the list holds the components of the tracked recipes, not what they make", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    world.itemBinds[6001] = 1
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 }, { 1002, 1 }, { 6001, 1 }, { 9999, 1, FINISHING } })
+    trackRecipe(world, 12, "Make cauldron", 5002, { { 5001, 3 }, { 1001, 1 } })
+    local recipes, list = openShopping(ns)
+    eq(#recipes.rows, 2)
+    eq(listText(list), "Flask=3/1/2,Herb=3/0/3,Ore=1/0/1",
+        "no cauldron, no bound or optional component, and the flask as a component, less the one made")
+end)
+
+test("what is already held comes off the list, for this character or the whole account", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 10 } })
+    Mock.SetBagItem(0, 1, 1001, "Herb", 2)
+    Mock.SetBagItem(12, 1, 1001, "Herb", 1)
+    Mock.Fire("BANKFRAME_OPENED")
+    Mock.RunTimers()
+    Mock.Fire("BANKFRAME_CLOSED")
+    TradingBookDB.characters["Alt-Hyjal"] = {
+        money = 0, stock = { bags = { [1001] = 5 }, bank = {}, mail = {} },
+        auctions = { { auctionID = 1, itemID = 1001, qty = 4, expiresAt = world.now + 3600 } },
+    }
+    local _, list = openShopping(ns)
+    eq(listText(list), "Herb=10/3/7", "the character and the Warband bank")
+    Mock.SettingsControl("Stock counted for purchases").setting:SetValue("account")
+    refreshShopping()
+    eq(listText(list), "Herb=10/8/2", "the alt's bags too, but not what is on sale")
+end)
+
+test("the number of crafts multiplies the list, and zero takes a recipe off it", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 } })
+    local _, list = openShopping(ns)
+    clickText("+")
+    refreshShopping()
+    eq(listText(list), "Herb=4/0/4")
+    eq(TradingBookDB.ui.shoppingCrafts["11"], 2, "kept for next time")
+
+    local crafts = shoppingBoxes()
+    eq(crafts:GetText(), "2")
+    crafts:SetText("5")
+    crafts.scripts.OnTextChanged(crafts, true)
+    refreshShopping()
+    eq(listText(list), "Herb=10/0/10")
+
+    crafts:SetText("0")
+    crafts.scripts.OnTextChanged(crafts, true)
+    refreshShopping()
+    eq(listText(list), "")
+    clickText("-")
+    refreshShopping()
+    eq(listText(list), "", "never below zero")
+end)
+
+test("the quality bought is the cheapest or the best, and every quality held counts", function()
+    local auctionator = fakeAuctionator({ [1001] = 300, [1002] = 100, [1003] = 900 }, {})
+    local ns, world = Mock.Boot({ auctionator = auctionator })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { { 1001, 1002, 1003 }, 4 } })
+    Mock.SetBagItem(0, 1, 1003, "Gem", 1)
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    local _, list = openShopping(ns)
+    eq(list.rows[1].itemID, 1002, "the cheapest")
+    eq(list.rows[1].buy, 3, "the one of another quality counts")
+    eq(list.rows[1].cost, 300)
+    Mock.SettingsControl("Component quality").setting:SetValue("highest")
+    refreshShopping()
+    eq(list.rows[1].itemID, 1003)
+end)
+
+test("a quality that takes another quantity is counted with it, and currencies are left out", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    world.recipes[11] = { name = "Make flask", icon = 1, outputItemID = 5001, quantityMin = 1, reagentSlotSchematics = {
+        { reagents = { { itemID = 1001 } }, quantityRequired = 2, reagentType = 1,
+            variableQuantities = { { reagent = { itemID = 1001 }, quantity = 7 } } },
+        { reagents = { { currencyID = 3000 } }, quantityRequired = 5, reagentType = 1, variableQuantities = {} },
+    } }
+    table.insert(world.trackedRecipes, 11)
+    local _, list = openShopping(ns)
+    eq(listText(list), "Herb=7/0/7")
+end)
+
+test("a recipe shows what a craft costs and earns once the cut is taken", function()
+    local auctionator = fakeAuctionator({ [1001] = 100, [5001] = 1000 }, {})
+    local ns, world = Mock.Boot({ auctionator = auctionator })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 } }, { outputQuantity = 2 })
+    trackRecipe(world, 12, "No price", 5002, { { 1002, 1 } })
+    local recipes = openShopping(ns)
+    local byKey = {}
+    for _, recipe in ipairs(recipes.rows) do
+        byKey[recipe.key] = recipe
+    end
+    eq(byKey["11"].cost, 200)
+    eq(byKey["11"].value, 1900, "two sold, less five percent")
+    eq(byKey["11"].margin, 1700)
+    eq(byKey["12"].margin, nil, "nothing known of its price")
+end)
+
+test("recent sales suggest how many to craft, for a week's worth beyond the stock", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    ns.Ledger.Add({ kind = "sold", itemID = 5001, name = "Flask", qty = 20, gross = 100, t = world.now - 3 * 86400 })
+    ns.Ledger.Add({ kind = "sold", itemID = 5001, name = "Flask", qty = 500, gross = 100, t = world.now - 20 * 86400 })
+    Mock.SetBagItem(0, 1, 5001, "Flask", 3)
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 1 } }, { outputQuantity = 2 })
+    trackRecipe(world, 12, "Never sold", 5002, { { 1002, 1 } })
+    local recipes, list = openShopping(ns)
+    clickText("Based on my sales")
+    refreshShopping()
+    eq(listText(list), "Herb=4/0/4,Ore=1/0/1", "seven more to have ten, by twos, and one left alone")
+    eq(recipes.rows[1].suggested ~= nil, true)
+end)
+
+test("buying asks for the exact price, then confirms it, and moves on to the next component", function()
+    local ns, world = Mock.Boot({ money = 100000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 5 }, { 1002, 2 } })
+    local _, list = openShopping(ns)
+    local buy = rawget(_G, BUY)
+    eq(buy.enabled, false, "nothing chosen yet")
+
+    clickRow(list, "Herb")
+    local _, quantity = shoppingBoxes()
+    eq(quantity:GetText(), "5")
+    eq(world.searches[#world.searches].kind, "commodity")
+    eq(world.searches[#world.searches].itemKey.itemID, 1001)
+    eq(buy.enabled, false, "not before the auction house has answered")
+
+    answerCommodity(world, 1001, { { 100, 3 }, { 110, 40 } })
+    eq(has(textShowing("Lowest"), "Lowest 100c, average 104c, total 520c"), true, textShowing("Lowest"))
+    press(BUY)
+    eq(world.purchaseSteps[1], "start 1001 x5")
+    eq(buy.enabled, false, "waiting for the exact price")
+
+    Mock.Fire("COMMODITY_PRICE_UPDATED", 105, 525)
+    eq(buy:GetText(), "Confirm")
+    eq(has(textShowing("Exact total"), "525c"), true, textShowing("Exact total"))
+    press(BUY)
+    eq(world.purchaseSteps[2], "confirm 1001 x5")
+
+    Mock.Fire("COMMODITY_PURCHASED", 1001, 5)
+    Mock.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(selectedRow(list), "Ore", "the next component to buy")
+    eq(quantity:GetText(), "2")
+    refreshShopping()
+    eq(shoppingRow(list, 1001).buy, 0, "what was bought is on its way in the mail")
+end)
+
+test("moving on after a purchase skips what is already covered", function()
+    local ns, world = Mock.Boot({ money = 100000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 1 }, { 1002, 1 }, { 1003, 1 } })
+    Mock.SetBagItem(0, 1, 1002, "Ore", 1)
+    Mock.Fire("BAG_UPDATE_DELAYED")
+    Mock.RunTimers()
+    local _, list = openShopping(ns)
+    clickRow(list, "Gem")
+    answerCommodity(world, 1003, { { 100, 3 } })
+    press(BUY)
+    Mock.Fire("COMMODITY_PRICE_UPDATED", 100, 100)
+    press(BUY)
+    Mock.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+    eq(selectedRow(list), "Herb", "Ore is covered")
+end)
+
+test("a quantity that climbs into dearer auctions takes a second press, or a good price", function()
+    local ns, world = Mock.Boot({ money = 100000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 10 } })
+    local _, list = openShopping(ns)
+    local _, quantity = shoppingBoxes()
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 100, 2 }, { 1000, 20 } })
+    eq(textShowing("The price climbs") ~= nil, true)
+    press(BUY)
+    eq(#world.purchaseSteps, 0, "one more press")
+    eq(rawget(_G, BUY):GetText(), "Confirm")
+
+    clickText("Good price: 2")
+    eq(quantity:GetText(), "2", "only what is at a good price")
+    eq(rawget(_G, BUY):GetText(), "Buy", "nothing left to warn about")
+    press(BUY)
+    eq(world.purchaseSteps[1], "start 1001 x2")
+end)
+
+test("buying stays within what is on sale and what the player can pay, and skips their own", function()
+    local ns, world = Mock.Boot({ money = 1000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 50 } })
+    local _, list = openShopping(ns)
+    local _, quantity = shoppingBoxes()
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 50, 3, true }, { 100, 5 } })
+    eq(quantity:GetText(), "5", "what can be bought, one's own auctions aside")
+    eq(has(textShowing("Lowest"), "Lowest 100c"), true, textShowing("Lowest"))
+    eq(rawget(_G, BUY).enabled, true)
+
+    quantity:SetText("8")
+    quantity.scripts.OnTextChanged(quantity, true)
+    eq(textShowing("Only 5 on sale") ~= nil, true)
+    eq(rawget(_G, BUY).enabled, false)
+
+    quantity:SetText("5")
+    quantity.scripts.OnTextChanged(quantity, true)
+    world.money = 10
+    quantity.scripts.OnTextChanged(quantity, true)
+    eq(rawget(_G, BUY).enabled, false, "not enough gold")
+end)
+
+test("an item sold by the unit is bought one auction at a time, at its buyout", function()
+    local ns, world = Mock.Boot({ money = 1000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 }, { 1002, 1 } })
+    local _, list = openShopping(ns)
+    local _, quantity = shoppingBoxes()
+    local key = { itemID = 1001, itemLevel = 0, itemSuffix = 0 }
+    clickRow(list, "Herb")
+    answerItem(world, key, { 700, 500, false })
+    eq(has(textShowing("Cheapest"), "Cheapest: 1 for 500c"), true, textShowing("Cheapest"))
+    press(BUY)
+    eq(#world.purchaseSteps, 0, "its price is shown first")
+    eq(rawget(_G, BUY):GetText(), "Confirm")
+    eq(has(textShowing("Exact total"), "500c"), true)
+    press(BUY)
+    eq(world.purchaseSteps[1], "bid 902 for 500", "the cheapest, at its buyout")
+
+    Mock.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 902)
+    eq(quantity:GetText(), "1", "one more to buy")
+    eq(selectedRow(list), "Herb")
+    answerItem(world, key, { 700 })
+    press(BUY)
+    press(BUY)
+    eq(world.purchaseSteps[2], "bid 901 for 700")
+    Mock.Fire("AUCTION_HOUSE_SHOW_ERROR", 1)
+    eq(selectedRow(list), "Herb", "a refusal looks again")
+
+    answerItem(world, key, { 700 })
+    press(BUY)
+    press(BUY)
+    Mock.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED", 901)
+    eq(selectedRow(list), "Ore", "done with it")
+    Mock.RunTimers()
+    eq(ns.Stockpile.GetItemRow(1001).mail, 2, "both on their way in the mail, not the refused one")
+end)
+
+test("one's own auctions of an item sold by the unit are not bought", function()
+    local ns, world = Mock.Boot({ money = 1000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 1 } })
+    local _, list = openShopping(ns)
+    clickRow(list, "Herb")
+    answerItem(world, { itemID = 1001, itemLevel = 0, itemSuffix = 0 }, { 500 }, true)
+    eq(textShowing("None on sale") ~= nil, true)
+    eq(rawget(_G, BUY).enabled, false)
+end)
+
+test("a component a tracked recipe makes for less says so, with what a unit costs to craft", function()
+    local auctionator = fakeAuctionator({ [1001] = 100, [5001] = 500 }, {})
+    local ns, world = Mock.Boot({ auctionator = auctionator, money = 1000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 } })
+    trackRecipe(world, 12, "Make cauldron", 5002, { { 5001, 3 } })
+    local _, list = openShopping(ns)
+    eq(shoppingRow(list, 5001).craftUnit, 200)
+    eq(shoppingRow(list, 1001).craftUnit, nil, "no recipe makes it")
+
+    local row = clickRow(list, "Flask")
+    answerCommodity(world, 5001, { { 500, 10 } })
+    eq(has(tostring(textShowing("Cheaper to craft")), "200c each"), true, tostring(textShowing("Cheaper to craft")))
+    eq(rawget(_G, BUY).enabled, true, "buying stays possible")
+    GameTooltip.lines = {}
+    row.scripts.OnEnter(row)
+    local lines = table.concat(GameTooltip.lines, " | ")
+    eq(has(lines, "Craft cost per unit=200c"), true, lines)
+end)
+
+test("a price well above a component's usual price takes a second press", function()
+    local ns, world = Mock.Boot({ money = 100000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 1 } })
+    openAuctionHouse()
+    for _ = 1, 3 do
+        answerScan({ auction(1001, 1, 100) })
+        world.now = world.now + 86400
+        SlashCmdList.TRADINGBOOK("scan")
+    end
+    eq(ns.Market.GetUsualPrice(1001), 100, "three days at 100")
+    eq(ns.Market.GetUsualPrice(1002), nil, "never seen")
+
+    local _, list = openShopping(ns)
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 200, 5 } })
+    eq(textShowing("Dearer than usual: +100.0%") ~= nil, true, tostring(textShowing("Dearer")))
+    press(BUY)
+    eq(#world.purchaseSteps, 0, "one more press")
+    press(BUY)
+    eq(world.purchaseSteps[1], "start 1001 x1")
+end)
+
+test("the most profitable recipes come first", function()
+    local auctionator = fakeAuctionator({ [1001] = 100, [5001] = 1000, [5002] = 150 }, {})
+    local ns, world = Mock.Boot({ auctionator = auctionator })
+    remember(ns)
+    trackRecipe(world, 11, "Small margin", 5002, { { 1001, 1 } })
+    trackRecipe(world, 12, "Large margin", 5001, { { 1001, 1 } })
+    trackRecipe(world, 13, "Unknown margin", 5003, { { 1002, 1 } })
+    local recipes = openShopping(ns)
+    local names = {}
+    for _, recipe in ipairs(recipes.rows) do
+        table.insert(names, recipe.name)
+    end
+    eq(table.concat(names, ","), "Large margin,Small margin,Unknown margin")
+end)
+
+test("a purchase that fails or has no price looks again, and leaving cancels it", function()
+    local ns, world = Mock.Boot({ money = 1000000 })
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 }, { 1002, 2 } })
+    local _, list = openShopping(ns)
+    clickRow(list, "Herb")
+    answerCommodity(world, 1001, { { 100, 30 } })
+    local searches = #world.searches
+    press(BUY)
+    Mock.Fire("COMMODITY_PRICE_UNAVAILABLE")
+    eq(world.purchaseSteps[2], "cancel")
+    eq(#world.searches, searches + 1, "searches again")
+
+    answerCommodity(world, 1001, { { 100, 30 } })
+    press(BUY)
+    Mock.Fire("COMMODITY_PRICE_UPDATED", 100, 200)
+    press(BUY)
+    Mock.Fire("COMMODITY_PURCHASE_FAILED")
+    eq(selectedRow(list), "Herb", "stays on it")
+    eq(#world.searches, searches + 2)
+
+    answerCommodity(world, 1001, { { 100, 30 } })
+    press(BUY)
+    local steps = #world.purchaseSteps
+    clickRow(list, "Ore")
+    eq(world.purchaseSteps[steps + 1], "cancel", "choosing another component")
+
+    answerCommodity(world, 1002, { { 100, 30 } })
+    press(BUY)
+    steps = #world.purchaseSteps
+    click(AuctionHouseFrame.Tabs[1])
+    eq(world.purchaseSteps[steps + 1], "cancel", "leaving the view")
+end)
+
+test("the list follows what is tracked and loads the items it does not know yet", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    world.unloadedItems[1002] = true
+    trackRecipe(world, 11, "Make flask", 5001, { { 1002, 1 } })
+    local recipes, list = openShopping(ns)
+    eq(world.itemLoads[1002], true, "asked for")
+    trackRecipe(world, 12, "Another", 5002, { { 1001, 1 } }, { recraft = true })
+    Mock.Fire("TRACKED_RECIPE_UPDATE", 12, true)
+    refreshShopping()
+    eq(#recipes.rows, 2, "a recraft counts")
+    eq(listText(list), "Herb=1/0/1,Ore=1/0/1")
+    eq(TradingBookDB.ui.shoppingCrafts, nil, "nothing saved at one craft")
+    ns.Shopping.SetCrafts("12:recraft", 3)
+    eq(TradingBookDB.ui.shoppingCrafts["12:recraft"], 3, "kept apart from the plain recipe")
+end)
+
+test("what is bought waits in the mail until the mailbox says what it holds", function()
+    local ns, world = Mock.Boot()
+    Mock.Fire("COMMODITY_PURCHASED", 1001, 4)
+    Mock.Fire("COMMODITY_PURCHASED", 1001, 1)
+    Mock.RunTimers()
+    eq(ns.Stockpile.GetItemRow(1001).mail, 5, "whatever made the purchase")
+    world.mails = {}
+    Mock.Fire("MAIL_SHOW")
+    Mock.RunTimers()
+    eq(ns.Stockpile.GetItemRow(1001), nil, "the mailbox has the last word")
+end)
+
+test("the keys buy while the Purchases view shows", function()
+    local ns, world = Mock.Boot()
+    remember(ns)
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 1 } })
+    openShopping(ns)
+    eq(world.bindings.SPACE, "CLICK " .. BUY .. ":LeftButton")
+    eq(world.bindings["SHIFT-SPACE"], "CLICK TradingBookShoppingNext:LeftButton")
+    for _, object in ipairs(Mock.Objects()) do
+        local parent = rawget(object, "parent")
+        if object.kind == "text" and object.text == "Quick sell" and parent and rawget(parent, "Underline") then
+            click(parent)
+        end
+    end
+    eq(world.bindings.SPACE, "CLICK " .. POST .. ":LeftButton")
+    click(AuctionHouseFrame.Tabs[1])
+    eq(next(world.bindings), nil)
+end)
+
+layoutTest("layout: the shopping list fits its labels, columns and buttons", function()
+    local ns, world = layoutFixture()
+    ns.RememberItem(7001, "An item with a really very long name indeed", 3, 1)
+    ns.RememberItem(7002, "Another item with a really very long name", 3, 1)
+    trackRecipe(world, 11, "A recipe with a really very long name indeed", 7050, { { 7001, 2 }, { 7002, 2000 } })
+    local recipes, list = openShopping(ns)
+    clickRow(list, "An item with a really very long name indeed")
+    answerCommodity(world, 7001, { { 100000, 1 }, { 99990000, 500 } })
+
+    local root = rawget(rawget(_G, BUY), "parent")
+    local rootRect = Mock.Rect(root)
+    local strip = {}
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and rawget(object, "parent") == root and Mock.IsVisible(object) and object.text ~= "" then
+            local rect = Mock.Rect(object)
+            eq(rect.left >= rootRect.left and rect.right <= rootRect.right + 0.01, true, "outside: " .. describe(object, rect))
+            table.insert(strip, { object = object, rect = rect })
+        end
+    end
+    for i = 1, #strip do
+        for j = i + 1, #strip do
+            eq(overlap(strip[i].rect, strip[j].rect), false,
+                "overlap: " .. describe(strip[i].object, strip[i].rect) .. " and " .. describe(strip[j].object, strip[j].rect))
+        end
+    end
+    for _, item in ipairs(strip) do
+        if item.object.font == "GameFontNormalSmall" then
+            eq(item.object:GetStringWidth() <= item.rect.right - item.rect.left + 0.01, true, ("label cut: %q"):format(item.object.text))
+        end
+    end
+
+    for _, tbl in ipairs({ recipes, list }) do
+        local box = Mock.Rect(tbl.ScrollBox)
+        for _, column in ipairs(tbl.columns) do
+            local header, title = Mock.Rect(column.header), Mock.Rect(column.header.Text)
+            eq(header.right <= box.right - 2, true, ("column %s runs into the scroll bar"):format(column.key))
+            eq(title.left >= header.left - 0.01 and title.right <= header.right + 0.01, true,
+                ("title too wide for column %s: %q"):format(column.key, column.header.Text:GetText()))
+        end
+    end
+
+    for _, object in ipairs(Mock.Objects()) do
+        if object.template == "UIPanelButtonTemplate" and Mock.IsWithin(object, rawget(root, "parent"))
+            and Mock.IsVisible(object) and object.text ~= "" then
+            eq(object:GetStringWidth() <= object.width - 12, true, "button text: " .. object.text)
+        end
+    end
+end)
+
 -- Settings ---------------------------------------------------------------------
 
 local function scaleControls()
@@ -3963,7 +4512,8 @@ test("the add-on has a page in the game's options, with every setting", function
     end
     eq(table.concat(names, ", "), "checkbox:Minimap icon, checkbox:Item tooltips, "
         .. "checkbox:Scan the auction house, checkbox:Mail summary, dropdown:Sale duration, "
-        .. "dropdown:Proposed price, checkbox:Next item after posting, checkbox:Quick sell keys, "
+        .. "dropdown:Proposed price, checkbox:Next item after posting, checkbox:Trading Book tab keys, "
+        .. "dropdown:Stock counted for purchases, dropdown:Component quality, "
         .. "checkbox:Custom window scale, slider:Window scale")
 
     local custom, slider = scaleControls()

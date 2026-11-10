@@ -41,6 +41,17 @@ local function AddSetting(key, name, valueType, defaultValue, getValue, setValue
     return setting
 end
 
+-- Dropdown choices from a list of { key, label }.
+local function KeyedOptions(list)
+    return function()
+        local container = Settings.CreateControlTextContainer()
+        for _, option in ipairs(list) do
+            container:Add(option.key, option.label)
+        end
+        return container:GetData()
+    end
+end
+
 local function GameScalePercent()
     return ScalePercent(UI.GetGameScale())
 end
@@ -79,22 +90,27 @@ local function RegisterSettings()
 
     local sellPricing = AddSetting("SellPricing", L["Proposed price"], Settings.VarType.String, ns.Selling.PRICINGS[1].key,
         ns.Selling.GetPricingKey, ns.Selling.SetPricingKey)
-    Settings.CreateDropdown(category, sellPricing, function()
-        local container = Settings.CreateControlTextContainer()
-        for _, pricing in ipairs(ns.Selling.PRICINGS) do
-            container:Add(pricing.key, pricing.label)
-        end
-        return container:GetData()
-    end, L["The price quick selling proposes, against the lowest one on sale."])
+    Settings.CreateDropdown(category, sellPricing, KeyedOptions(ns.Selling.PRICINGS),
+        L["The price quick selling proposes, against the lowest one on sale."])
 
     local sellNext = AddSetting("SellAutoNext", L["Next item after posting"], Settings.VarType.Boolean, true,
         ns.Selling.IsAutoNextEnabled, ns.Selling.SetAutoNextEnabled)
     Settings.CreateCheckbox(category, sellNext, L["Moves on to the next item of the list once an item is posted."])
 
-    local sellKeys = AddSetting("SellShortcuts", L["Quick sell keys"], Settings.VarType.Boolean, true,
+    local sellKeys = AddSetting("SellShortcuts", L["Trading Book tab keys"], Settings.VarType.Boolean, true,
         ns.Selling.AreShortcutsEnabled, ns.Selling.SetShortcutsEnabled)
     Settings.CreateCheckbox(category, sellKeys,
-        L["While quick selling, Space posts, Shift-Space goes to the next item and Backspace to the previous one."])
+        L["In the Trading Book tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."])
+
+    local stockScope = AddSetting("ShoppingStock", L["Stock counted for purchases"], Settings.VarType.String,
+        ns.Shopping.STOCK_SCOPES[1].key, ns.Shopping.GetStockScopeKey, ns.Shopping.SetStockScopeKey)
+    Settings.CreateDropdown(category, stockScope, KeyedOptions(ns.Shopping.STOCK_SCOPES),
+        L["What is subtracted from the components to buy."])
+
+    local quality = AddSetting("ShoppingQuality", L["Component quality"], Settings.VarType.String,
+        ns.Shopping.QUALITIES[1].key, ns.Shopping.GetQualityKey, ns.Shopping.SetQualityKey)
+    Settings.CreateDropdown(category, quality, KeyedOptions(ns.Shopping.QUALITIES),
+        L["Which quality of a component the shopping list buys."])
 
     -- A scale of its own starts from the game's, so that turning it on changes nothing yet.
     local ownScale = AddSetting("OwnScale", L["Custom window scale"], Settings.VarType.Boolean, false,

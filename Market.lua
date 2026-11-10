@@ -16,6 +16,8 @@ local AUCTIONATOR_DELAY_SECONDS = 1
 local ENTRIES_PER_FRAME = 2000
 local KEEP_DAYS = 30
 local CHANGE_MIN_DAYS = 7
+-- The fewest daily prices an item's usual price is read from.
+local USUAL_MIN_DAYS = 3
 local AUCTIONATOR_SAMPLE = 50
 local SECONDS_PER_DAY = 86400
 local SOLD = 1
@@ -142,6 +144,22 @@ function Market.GetChange(itemID)
     return (saved[PRICE] - reference) / reference, ns.DayKeyToTime(referenceDay)
 end
 
+-- The average of an item's daily prices over the month they are kept, or nil with
+-- fewer than a few of them.
+function Market.GetUsualPrice(itemID)
+    local data = RealmData()
+    local history = data and data.history[itemID]
+    if not history then
+        return nil
+    end
+    local total, days = 0, 0
+    for _, price in pairs(history) do
+        total = total + price
+        days = days + 1
+    end
+    return days >= USUAL_MIN_DAYS and total / days or nil
+end
+
 -- Auctionator scans by itself. It only counts as having data when it prices some of
 -- the items the account has dealt in.
 function Market.AuctionatorHasData()
@@ -157,6 +175,37 @@ function Market.AuctionatorHasData()
     end
     return false
 end
+
+-- Queries ---------------------------------------------------------------------------
+
+-- The server loses a search sent too soon: one waits here for its turn, and the
+-- latest replaces it.
+local query = nil
+
+local function SendQuery()
+    if query and not query.sent and C_AuctionHouse.IsThrottledMessageSystemReady() then
+        query.sent = true
+        query.send()
+    end
+end
+
+function Market.SendQuery(send)
+    query = { send = send }
+    SendQuery()
+end
+
+function Market.CancelQuery()
+    query = nil
+end
+
+ns.OnEvent("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", SendQuery)
+
+-- A search the server dropped is sent again when it can take one.
+ns.OnEvent("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED", function()
+    if query then
+        query.sent = false
+    end
+end)
 
 -- Scanning --------------------------------------------------------------------------
 

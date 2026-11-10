@@ -237,6 +237,13 @@ function Stockpile.SetMailContents(contents)
     RequestScan()
 end
 
+-- What was just bought waits in the mail, until the mailbox shows what it really holds.
+function Stockpile.AddToMail(itemID, quantity)
+    local mail = ns.GetCharacter().stock.mail
+    mail[itemID] = (mail[itemID] or 0) + quantity
+    RequestScan()
+end
+
 local function UpdateMoney()
     if ns.playerKey then
         ns.GetCharacter().money = GetMoney()

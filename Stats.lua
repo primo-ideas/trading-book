@@ -168,6 +168,17 @@ end
 
 -- Pricing -------------------------------------------------------------------
 
+-- The units of each item sold since a time, by item ID.
+function Stats.GetSoldQuantities(since)
+    local sold = {}
+    for _, entry in ipairs(ns.db.ledger) do
+        if entry.kind == "sold" and entry.itemID and entry.t >= since then
+            sold[entry.itemID] = (sold[entry.itemID] or 0) + (entry.qty or 1)
+        end
+    end
+    return sold
+end
+
 local saleStats = nil
 
 ns.Subscribe("LEDGER_CHANGED", function()

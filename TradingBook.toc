@@ -50,6 +50,7 @@ Stats.lua
 Market.lua
 Watch.lua
 Selling.lua
+Shopping.lua
 Gold.lua
 UI\Widgets.lua
 UI\Order.lua
@@ -64,4 +65,5 @@ UI\StockTab.lua
 UI\StatsTab.lua
 UI\GoldTab.lua
 UI\QuickSell.lua
+UI\Shopping.lua
 UI\AuctionHouse.lua
