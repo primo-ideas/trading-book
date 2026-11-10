@@ -30,9 +30,10 @@ Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it b
 
 Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get Trading Book's lines, together at the bottom and without a title, to save room: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Without a price from Auctionator, which shows its own, they also give the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. A watched item also shows its price targets. Nothing is added for an item that has none of these, nor in Trading Book's own windows, which already show the same. `/tradingbook tooltip` hides the lines or brings them back.
 
-The auction house window gets a Trading Book tab, after its own and in line with Auctionator's when it is installed. At its top: when the auction house was last scanned, when the game allows the next scan, and a button to scan it. Below, two views:
+The auction house window gets a Trading Book tab, after its own and in line with Auctionator's when it is installed. At its top: when the auction house was last scanned, when the game allows the next scan, and a button to scan it. Below, three views:
 
 - **Quick sell** lists what your bags can sell. Click an item: the whole stack is ready to list for 48 hours, at the lowest price on sale once the auction house has answered. Change the quantity, the price (written like `12g50s` or `12.5`) or the duration for that item if you like, then **Post**, or press Enter in a box. The next item of the list is then selected, ready to post. **Next** and **Previous** go through the list without posting. With the keys on, Space posts, Shift-Space goes to the next item and Backspace to the previous one. A price below what a vendor pays, or far under the usual price of a commodity, takes a second press.
+- **Purchases** turns your tracked recipes into a shopping list. On the left, each recipe with how many times to craft it and what a craft earns once sold. On the right, the components to buy, and never the crafted item unless another tracked recipe needs it. The quantity to buy is what the crafts need, less what you hold and what your recipes will make. Click a component, then **Buy**: the game gives the exact price, which **Confirm** accepts, and the next component to buy is selected. A quantity that climbs into much dearer auctions takes a second press, and **Good price** limits it to what is close to the lowest price. **Based on my sales** sets each recipe to a week of your recent sales, beyond the stock you have. Recipes come with the most profitable first. A component one of your tracked recipes makes for less than it sells for says so, with what a unit costs to craft. A price well above the usual price of a component, from Trading Book's daily prices, takes a second press. A component sold by the unit rather than as a commodity is bought one auction at a time, at its buyout.
 - **Tracking** shows your undercut auctions with the cheaper price on sale, and the watched items with their targets and the lowest price on sale, in green when a target is reached.
 
 When Auctionator is not installed, or has no prices, Trading Book scans the auction house itself when it opens: one request reads every auction of the realm, at most every 15 minutes, as the game allows. `/tradingbook scan` starts a scan by hand, even with Auctionator. With Auctionator, its prices serve too: what it saw today counts for the undercuts, the watched items and the auction house tab, unless Trading Book scanned that day. Each item keeps its lowest buyout per unit and the quantity on sale. Connected realms share their prices, which are kept 30 days after the item was last seen. The items your account holds or traded also keep one price a day for 30 days, which gives the change shown in their tooltip.
@@ -52,7 +53,9 @@ The settings are in the game's options, under AddOns > Trading Book. A right-cli
 | **Sale duration** | How long quick selling lists an auction: 12, 24 or 48 hours. 48 by default. |
 | **Proposed price** | What quick selling proposes against the lowest price on sale: the same price by default, or 1 silver, 1 gold, 1%, 5% or 10% less. Your own lowest price is never undercut. |
 | **Next item after posting** | Moves on to the next item of the list once an item is posted. |
-| **Quick sell keys** | Space, Shift-Space and Backspace while quick selling. Turned off, those keys keep their usual use. |
+| **Trading Book tab keys** | Space, Shift-Space and Backspace in the Quick sell and Purchases views. Turned off, those keys keep their usual use. |
+| **Stock counted for purchases** | What comes off the components to buy: this character and the Warband bank, or the whole account. |
+| **Component quality** | Which quality of a component the shopping list buys: the cheapest, or the highest. Whatever quality you hold counts towards the need. |
 | **Custom window scale** | Gives the window a scale of its own, which replaces the game's UI scale: the window then keeps its size when the game's scale changes. Turned on, it starts from the game's current scale, so nothing moves yet. Turned off, the window follows the game's scale again. |
 | **Window scale** | That scale, from 50% to 120% in steps of 5%, in the same percent as the game's UI scale. Greyed out while the window follows the game. The window stays centred on the same spot when it changes. |
 
@@ -124,6 +127,7 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 13. **Auction house tab**: it sits after the game's tabs, in line with Auctionator's when it is installed. Clicking it replaces the auction house's content with its panel, above the player's money, and changes the title. Clicking any other tab, the game's or Auctionator's, brings that tab's content and highlight back, and reopening the auction house starts on the game's first tab. Using bag items in combat after a visit to the auction house raises no "action blocked" message. The status counts down to the next scan and the button scans.
 14. **Auctionator's prices**: after a scan in Auctionator, the undercuts, the watched items and the Trading Book tab follow its prices, and its searches do not fill the chat.
 15. **Quick sell**: the list holds what the bags can sell, a stack posts in one press, the price shown is the one the auction house shows, the deposit matches, and the game's confirmation dialog appears when it wants one. Space, Shift-Space and Backspace work, and Space jumps again once the tab is left. Several copies of an item that does not stack post one after the other.
+16. **Shopping list**: tracked recipes appear with their components, including recrafts. The price given before confirming is what is charged, the purchase arrives in the mail, and the list counts it straight away. Space buys then confirms.
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
 
@@ -168,7 +172,8 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Stats.lua` | Statistics and price estimates |
 | `Market.lua` | Auction house scan and the prices it keeps |
 | `Selling.lua` | Quick selling: what can be listed, the price to propose, the listing |
+| `Shopping.lua` | The shopping list of the tracked recipes, its quantities and buying |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
-| `UI/` | Window, tables, tabs, settings and their order page, item tooltips, the auction house tab and its quick sell view |
+| `UI/` | Window, tables, tabs, settings and their order page, item tooltips, the auction house tab and its quick sell and shopping views |
 | `tests/` | Fake client and tests |
 | `install.ps1`, `.pkgmeta` | Local install and CurseForge package |
