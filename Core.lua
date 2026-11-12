@@ -83,6 +83,7 @@ local function InitDB()
     db.stockHistory = db.stockHistory or {}
     db.goldHistory = nil -- An account total from the first version, replaced by per-holder histories.
     db.ui = db.ui or {}
+    db.ui.noAutoScan = nil -- The automatic scan's setting: scans are now only made by hand.
     db.market = db.market or { realms = {} }
     db.watch = db.watch or {}
     ns.db = db
@@ -263,7 +264,7 @@ SlashCmdList.TRADINGBOOK = function(message)
     elseif command == "auctions" or command == "stock" or command == "stats" or command == "gold" then
         ns.UI.Open(command)
     elseif command == "scan" then
-        ns.Market.Scan(true)
+        ns.Market.Scan()
     elseif command == "watch" then
         ns.Watch.Command(rest)
     elseif command == "unwatch" then

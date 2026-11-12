@@ -143,8 +143,6 @@ ns.Translation = {
     ["The window's size, in percent like the game's UI scale."] = "Размер окна в процентах, как масштаб интерфейса игры.",
 
     -- Auction house scan
-    ["Scan the auction house"] = "Сканировать аукцион",
-    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "Сканирует аукцион при открытии, не чаще чем раз в 15 минут, как позволяет игра, если только у Auctionator ещё нет цен. /tradingbook scan запускает сканирование вручную.",
     ["Scanning the auction house..."] = "Сканирование аукциона...",
     ["Auction house scanned: %s items priced."] = "Аукцион просканирован: цены для %s предметов.",
     ["Open the auction house to scan it."] = "Откройте аукцион, чтобы просканировать его.",
