@@ -1,6 +1,6 @@
 # Trading Book
 
-[Version française](README.fr.md)
+[![CI](https://github.com/primo-ideas/trading-book/actions/workflows/ci.yml/badge.svg)](https://github.com/primo-ideas/trading-book/actions/workflows/ci.yml)
 
 World of Warcraft addon (Retail, 12.1.5) that keeps a record of your auctions and your stock, with statistics.
 
@@ -33,7 +33,7 @@ Item tooltips, wherever the game shows them (bags, bank, auction house, chat lin
 The auction house window gets a Trading Book tab, after its own and in line with Auctionator's when it is installed. At its top: when the auction house was last scanned, when the game allows the next scan, and a button to scan it. Below, three views:
 
 - **Quick sell** lists what your bags can sell. Click an item: the whole stack is ready to list for 48 hours, at the lowest price on sale once the auction house has answered. Change the quantity, the price (written like `12g50s` or `12.5`) or the duration for that item if you like, then **Post**, or press Enter in a box. The next item of the list is then selected, ready to post. **Next** and **Previous** go through the list without posting. With the keys on, Space posts, Shift-Space goes to the next item and Backspace to the previous one. A price below what a vendor pays, or far under the usual price of a commodity, takes a second press.
-- **Purchases** turns your tracked recipes into a shopping list. On the left, each recipe with how many times to craft it and what a craft earns once sold. On the right, the components to buy, and never the crafted item unless another tracked recipe needs it. The quantity to buy is what the crafts need, less what you hold and what your recipes will make. Click a component, then **Buy**: the game gives the exact price, which **Confirm** accepts, and the next component to buy is selected. A quantity that climbs into much dearer auctions takes a second press, and **Good price** limits it to what is close to the lowest price. **Based on my sales** sets each recipe to a week of your recent sales, beyond the stock you have. Recipes come with the most profitable first. A component one of your tracked recipes makes for less than it sells for says so, with what a unit costs to craft. A price well above the usual price of a component, from Trading Book's daily prices, takes a second press. A component sold by the unit rather than as a commodity is bought one auction at a time, at its buyout.
+- **Purchases** turns your tracked recipes into a shopping list. On the left, each recipe with how many times to craft it and what a craft earns once sold. On the right, the components to buy, and never the crafted item unless another tracked recipe needs it. The quantity to buy is what the crafts need, less what you hold and what your recipes will make. Click a component, then **Buy**: the game gives the exact price, which **Confirm** accepts, and the next component to buy is selected. Changing the quantity after that drops the price given, and **Buy** asks for the new one. A quantity that climbs into much dearer auctions takes a second press, and **Good price** limits it to what is close to the lowest price. **Based on my sales** sets each recipe to a week of your recent sales, beyond the stock you have. A recraft improves an item you already have and makes no new one: its components are on the list, but it covers no other recipe's need and gets no suggestion. Recipes come with the most profitable first. A component one of your tracked recipes makes for less than it sells for says so, with what a unit costs to craft. A price well above the usual price of a component, from Trading Book's daily prices, takes a second press. A component sold by the unit rather than as a commodity is bought one auction at a time, at its buyout.
 - **Tracking** shows your undercut auctions with the cheaper price on sale, and the watched items with their targets and the lowest price on sale, in green when a target is reached.
 
 When Auctionator is not installed, or has no prices, Trading Book scans the auction house itself when it opens: one request reads every auction of the realm, at most every 15 minutes, as the game allows. `/tradingbook scan` starts a scan by hand, even with Auctionator. With Auctionator, its prices serve too: what it saw today counts for the undercuts, the watched items and the auction house tab, unless Trading Book scanned that day. Each item keeps its lowest buyout per unit and the quantity on sale. Connected realms share their prices, which are kept 30 days after the item was last seen. The items your account holds or traded also keep one price a day for 30 days, which gives the change shown in their tooltip.
@@ -131,49 +131,6 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 
 To inspect the data in game: `/dump TradingBook.db.ledger[#TradingBook.db.ledger]`.
 
-## Tests
+## Development
 
-The tests run on Lua 5.1, the version WoW uses, against a strict fake client where any unknown global or method raises an error. The layout tests run in every language.
-
-```powershell
-pip install lupa
-python tests/run.py
-```
-
-## Publishing on CurseForge
-
-`.pkgmeta` describes the package: a `TradingBook` folder holding the `.toc` and the files it lists, the same as `install.ps1`.
-
-To do once:
-
-1. Create the project on CurseForge and note its ID, under "About This Project" on its overview page.
-2. Create a token on the [API tokens page](https://www.curseforge.com/account/api-tokens).
-3. In the GitHub repository settings, add a webhook with the URL `https://www.curseforge.com/api/projects/{projectID}/package?token={token}`, leaving the other settings at their defaults. The token is a secret: it must never enter the repository.
-
-After that, each release is a tag:
-
-```powershell
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The tag name becomes the addon's version. A tag containing `alpha` or `beta` publishes an alpha or beta, anything else a stable release. Installed with `install.ps1`, the addon keeps `@project-version@` as its version, as only the package replaces it.
-
-## Structure
-
-| File | Role |
-| --- | --- |
-| `Core.lua` | Events, saved data, formatting, `/tradingbook` command |
-| `Ledger.lua` | History of operations |
-| `Auctions.lua` | Listings, cancellations, active auctions |
-| `Mail.lua` | Sales, purchases and expiries read from the mail |
-| `Stockpile.lua` | Stock and its history |
-| `Gold.lua` | Gold history per holder and its analysis |
-| `Stats.lua` | Statistics and price estimates |
-| `Market.lua` | Auction house scan and the prices it keeps |
-| `Selling.lua` | Quick selling: what can be listed, the price to propose, the listing |
-| `Shopping.lua` | The shopping list of the tracked recipes, its quantities and buying |
-| `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
-| `UI/` | Window, tables, tabs, settings and their order page, item tooltips, the auction house tab and its quick sell and shopping views |
-| `tests/` | Fake client and tests |
-| `install.ps1`, `.pkgmeta` | Local install and CurseForge package |
+Tests, continuous integration, publishing on CurseForge and the layout of the code are in [docs/development.md](docs/development.md).

@@ -90,6 +90,16 @@ local function CurrentQuote()
     return Shopping.GetQuote(current.itemID, ReadQuantity() or 0)
 end
 
+-- A new quantity needs a new exact price: the purchase priced for the previous one is
+-- dropped, so that Confirm never buys another quantity than the one shown.
+local function OnQuantityChanged()
+    if state == "pricing" or state == "priced" then
+        Shopping.CancelPurchase()
+        state, pricedTotal = "ready", nil
+    end
+    armed = false
+end
+
 local function CanBuy(quote)
     local quantity = ReadQuantity()
     if not (C_AuctionHouse.IsThrottledMessageSystemReady() and quantity ~= nil and quantity > 0) then
@@ -565,7 +575,7 @@ local function BuildList(right)
     goodButton = CreateButton(right, nil, "", GOOD_WIDTH, CONTROL_HEIGHT, function()
         local quote = CurrentQuote()
         quantityBox:SetText(tostring(quote.goodQuantity))
-        armed = false
+        OnQuantityChanged()
         UpdateDetail()
     end)
     goodButton:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", 0, 38)
@@ -587,7 +597,7 @@ local function BuildList(right)
     label:SetJustifyH("LEFT")
     label:SetText(L["Quantity"])
     quantityBox = CreateBox(right, QUANTITY_WIDTH, function()
-        armed = false
+        OnQuantityChanged()
         UpdateDetail()
     end)
     quantityBox:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", LABEL_WIDTH + 6, 2)
