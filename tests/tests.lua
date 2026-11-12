@@ -2315,6 +2315,33 @@ test("a request the server never answers does not block the next one", function(
     eq(world.replicateRequests, 2)
 end)
 
+test("a scan waits for the throttle, and is requested again when dropped", function()
+    local ns, world = Mock.Boot()
+    world.throttled = true
+    openAuctionHouse()
+    eq(world.replicateRequests, 0, "the server would lose it")
+    eq(ns.Market.GetScanState(), "waiting")
+    eq(ns.Market.NextScanAt() <= world.now, true, "the 15 minutes have not started")
+
+    world.now = world.now + 5
+    world.throttled = false
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(world.replicateRequests, 1, "sent once the server takes messages")
+    eq(ns.Market.NextScanAt(), world.now + 15 * 60, "counted from the request really sent")
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(world.replicateRequests, 1, "only once")
+
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED")
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(world.replicateRequests, 2, "dropped, so requested again")
+    answerScan({ auction(1001, 1, 100) })
+    eq(ns.Market.GetItem(1001).price, 100)
+
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED")
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(world.replicateRequests, 2, "nothing to request once answered")
+end)
+
 test("items gone from the auction house keep their last price for a month, with none on sale", function()
     local ns, world = Mock.Boot()
     openAuctionHouse()

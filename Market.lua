@@ -198,12 +198,23 @@ function Market.CancelQuery()
     query = nil
 end
 
-ns.OnEvent("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", SendQuery)
+-- The scan's request goes through the same throttle. Defined with the scan, below.
+local SendScan
 
--- A search the server dropped is sent again when it can take one.
+-- The scan goes first: it is asked for once, while a search can be asked again.
+ns.OnEvent("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", function()
+    SendScan()
+    SendQuery()
+end)
+
+-- What the server dropped is sent again when it can take a message. The game does
+-- not say which message it dropped, so both are.
 ns.OnEvent("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED", function()
     if query then
         query.sent = false
+    end
+    if state == "waiting" then
+        scan.sent = false
     end
 end)
 
@@ -294,6 +305,18 @@ function Market.GetScanState()
     return state
 end
 
+-- The request is lost when sent while the server throttles the auction house's
+-- messages, as it does just after the window opens: it waits for its turn, and the
+-- 15 minutes only count from the moment it is really sent.
+function SendScan()
+    if state == "waiting" and not scan.sent and C_AuctionHouse.IsThrottledMessageSystemReady() then
+        scan.sent = true
+        scan.requestedAt = time()
+        ns.db.market.requestedAt = time()
+        C_AuctionHouse.ReplicateItems()
+    end
+end
+
 -- byHand: asked for by the player, who is then told what happens. Returns whether
 -- a scan was requested.
 function Market.Scan(byHand)
@@ -316,10 +339,9 @@ function Market.Scan(byHand)
         return false
     end
 
-    ns.db.market.requestedAt = time()
     state = "waiting"
     scan = { requestedAt = time(), byHand = byHand }
-    C_AuctionHouse.ReplicateItems()
+    SendScan()
     if byHand then
         ns.Print(L["Scanning the auction house..."])
     end

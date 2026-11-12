@@ -839,7 +839,10 @@ local function InstallApi()
         CalculateCommodityDeposit = function(_, _, quantity) return 10 * quantity end,
         GetOwnedAuctions = function() return world.owned end,
         -- The whole auction house, read back by 0-based index once the event fires.
-        ReplicateItems = function() world.replicateRequests = world.replicateRequests + 1 end,
+        ReplicateItems = function()
+            assert(not world.throttled, "A scan requested while throttled is lost")
+            world.replicateRequests = world.replicateRequests + 1
+        end,
         GetNumReplicateItems = function() return #world.replicate end,
         GetReplicateItemInfo = function(index)
             assert(type(index) == "number" and index >= 0 and index < #world.replicate,
