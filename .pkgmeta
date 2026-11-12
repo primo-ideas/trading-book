@@ -8,5 +8,5 @@ ignore:
     - tests
     - install.ps1
     - README.md
-    - README.fr.md
+    - docs
     - LICENSE

@@ -197,11 +197,16 @@ local function HeldCount(tiers)
     return held
 end
 
+-- A recraft improves an item already made: it adds none to the stock.
+local function Makes(recipe, itemID)
+    return not recipe.isRecraft and recipe.outputItemID == itemID
+end
+
 local function ProducedCount(tiers, recipes)
     local produced = 0
     for _, recipe in ipairs(recipes) do
         for _, itemID in ipairs(tiers) do
-            if recipe.outputItemID == itemID then
+            if Makes(recipe, itemID) then
                 produced = produced + recipe.crafts * recipe.outputQuantity
             end
         end
@@ -221,7 +226,7 @@ local function CraftUnitCost(tiers, recipes)
     local best = nil
     for _, recipe in ipairs(recipes) do
         for _, itemID in ipairs(tiers) do
-            if recipe.outputItemID == itemID then
+            if Makes(recipe, itemID) then
                 local cost = Shopping.GetEconomics(recipe)
                 if cost then
                     local unit = cost / recipe.outputQuantity
@@ -289,9 +294,9 @@ function Shopping.GetTotal(rows)
 end
 
 -- How many crafts make up a week of recent sales, beyond what is already in stock, or
--- nil for an item that did not sell lately.
+-- nil for an item that did not sell lately, or for a recraft, which restocks nothing.
 function Shopping.SuggestCrafts(recipe, sold)
-    local units = recipe.outputItemID and sold[recipe.outputItemID]
+    local units = not recipe.isRecraft and recipe.outputItemID and sold[recipe.outputItemID]
     if not units then
         return nil
     end
