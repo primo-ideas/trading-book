@@ -32,6 +32,8 @@ local state = nil -- nil, "waiting" for the server or "reading" its answer
 local scan = nil
 local realmKey = nil
 local realmGroup = nil
+-- Sends a scan request the throttle held back. Defined with the scanning below.
+local SendRequest
 
 -- Realm names as the client normalizes them, without spaces or dashes, so that a
 -- character key's realm compares with the list of connected realms.
@@ -198,12 +200,21 @@ function Market.CancelQuery()
     query = nil
 end
 
-ns.OnEvent("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", SendQuery)
+ns.OnEvent("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", function()
+    SendQuery()
+    SendRequest()
+end)
 
--- A search the server dropped is sent again when it can take one.
+-- A search or a scan request the server dropped is sent again when it can take one.
+-- The event does not say which message it dropped: a scan request sent twice is
+-- answered once.
 ns.OnEvent("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED", function()
     if query then
         query.sent = false
+    end
+    if state == "waiting" and scan.sentAt then
+        scan.sentAt = nil
+        ns.db.market.requestedAt = scan.previousRequestedAt
     end
 end)
 
@@ -285,21 +296,40 @@ function Market.NextScanAt()
     return (ns.db.market.requestedAt or 0) + SCAN_INTERVAL_SECONDS
 end
 
--- nil, or "waiting" for the server's answer or "reading" it. A request the server
--- never answered no longer counts.
-function Market.GetScanState()
-    if state == "waiting" and time() - scan.requestedAt > ANSWER_TIMEOUT_SECONDS then
-        return nil
+-- The request goes out once the game's throttled messages allow it: sent too soon,
+-- right after the owned auctions were asked for for instance, it would be lost. The
+-- 15 minutes the game wants between scans count from that moment.
+SendRequest = function()
+    if state ~= "waiting" or scan.sentAt or not C_AuctionHouse.IsThrottledMessageSystemReady() then
+        return
     end
+    scan.sentAt = time()
+    ns.db.market.requestedAt = scan.sentAt
+    C_AuctionHouse.ReplicateItems()
+end
+
+-- A request the server never answered was dropped, or refused as another addon scanned
+-- less than 15 minutes ago. Its wait is given back, so the button can try again, and
+-- the player hears of it rather than waiting for nothing.
+local function ExpireUnanswered()
+    if state == "waiting" and scan.sentAt and time() - scan.sentAt > ANSWER_TIMEOUT_SECONDS then
+        ns.db.market.requestedAt = scan.previousRequestedAt
+        state, scan = nil, nil
+        ns.Print(L["The auction house did not answer the scan, perhaps because another addon scanned it less than 15 minutes ago. You can try again."])
+        ns.Publish("MARKET_CHANGED")
+    end
+end
+
+-- nil, or "waiting" for the server's answer or "reading" it.
+function Market.GetScanState()
+    ExpireUnanswered()
     return state
 end
 
 -- byHand: asked for by the player, who is then told what happens. Returns whether
 -- a scan was requested.
 function Market.Scan(byHand)
-    if state == "waiting" and time() - scan.requestedAt > ANSWER_TIMEOUT_SECONDS then
-        state, scan = nil, nil -- The server never answered.
-    end
+    ExpireUnanswered()
     local message = nil
     if state then
         message = L["Scanning the auction house..."]
@@ -316,10 +346,11 @@ function Market.Scan(byHand)
         return false
     end
 
-    ns.db.market.requestedAt = time()
     state = "waiting"
-    scan = { requestedAt = time(), byHand = byHand }
-    C_AuctionHouse.ReplicateItems()
+    scan = { byHand = byHand, previousRequestedAt = ns.db.market.requestedAt }
+    SendRequest()
+    -- Checked again once the answer is overdue, should nothing look at the state.
+    C_Timer.After(ANSWER_TIMEOUT_SECONDS + 1, ExpireUnanswered)
     if byHand then
         ns.Print(L["Scanning the auction house..."])
     end

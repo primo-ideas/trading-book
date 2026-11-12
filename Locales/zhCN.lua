@@ -265,4 +265,5 @@ ns.Translation = {
     ["Dearer than usual: %s"] = "比平时贵：%s",
     ["Craft cost per unit"] = "单件制作成本",
     ["Cheaper to craft: %s each"] = "制作更便宜：每件 %s",
+    ["The auction house did not answer the scan, perhaps because another addon scanned it less than 15 minutes ago. You can try again."] = "拍卖行没有响应扫描，可能是其他插件在15分钟内扫描过。你可以再试一次。",
 }

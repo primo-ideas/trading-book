@@ -265,4 +265,5 @@ ns.Translation = {
     ["Dearer than usual: %s"] = "Mais caro que o normal: %s",
     ["Craft cost per unit"] = "Custo de criação por unidade",
     ["Cheaper to craft: %s each"] = "Mais barato criar: %s cada",
+    ["The auction house did not answer the scan, perhaps because another addon scanned it less than 15 minutes ago. You can try again."] = "A casa de leilões não respondeu à varredura, talvez porque outro addon a varreu há menos de 15 minutos. Você pode tentar de novo.",
 }

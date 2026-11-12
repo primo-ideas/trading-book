@@ -265,4 +265,5 @@ ns.Translation = {
     ["Dearer than usual: %s"] = "평소보다 비쌈: %s",
     ["Craft cost per unit"] = "개당 제작 비용",
     ["Cheaper to craft: %s each"] = "제작이 더 저렴: 개당 %s",
+    ["The auction house did not answer the scan, perhaps because another addon scanned it less than 15 minutes ago. You can try again."] = "경매장이 검색에 응답하지 않았습니다. 다른 애드온이 15분 이내에 검색했을 수 있습니다. 다시 시도할 수 있습니다.",
 }
