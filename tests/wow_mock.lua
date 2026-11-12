@@ -839,7 +839,14 @@ local function InstallApi()
         CalculateCommodityDeposit = function(_, _, quantity) return 10 * quantity end,
         GetOwnedAuctions = function() return world.owned end,
         -- The whole auction house, read back by 0-based index once the event fires.
-        ReplicateItems = function() world.replicateRequests = world.replicateRequests + 1 end,
+        -- Sent while throttled, the request is lost and the server says so.
+        ReplicateItems = function()
+            if world.throttled then
+                G.C_Timer.After(0, function() Mock.Fire("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED") end)
+                return
+            end
+            world.replicateRequests = world.replicateRequests + 1
+        end,
         GetNumReplicateItems = function() return #world.replicate end,
         GetReplicateItemInfo = function(index)
             assert(type(index) == "number" and index >= 0 and index < #world.replicate,

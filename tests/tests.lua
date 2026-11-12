@@ -2241,6 +2241,36 @@ test("scans keep the game's 15 minutes apart, and a scan by hand says when it ca
     eq(has(world.printed[#world.printed], "Scanning the auction house..."), true)
 end)
 
+test("a scan request waits for the game's throttle, and one the server dropped is sent again", function()
+    local ns, world = Mock.Boot()
+    world.throttled = true
+    openAuctionHouse()
+    eq(world.replicateRequests, 0, "held back while the throttle is busy")
+    eq(ns.Market.GetScanState(), "waiting")
+    eq(ns.Market.NextScanAt() <= world.now, true, "the 15 minutes start only once it is sent")
+    world.throttled = false
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(world.replicateRequests, 1)
+
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED")
+    eq(ns.Market.NextScanAt() <= world.now, true, "a dropped request does not count")
+    Mock.Fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+    eq(world.replicateRequests, 2, "sent again")
+    answerScan({ auction(1001, 1, 100) })
+    eq(ns.Market.GetItem(1001).price, 100)
+    eq(ns.Market.NextScanAt(), world.now + 15 * 60)
+end)
+
+test("an unanswered scan is noticed even when nothing looks at its state", function()
+    local ns, world = Mock.Boot()
+    Mock.Fire("AUCTION_HOUSE_SHOW")
+    Mock.RunTimers() -- The automatic scan, then its overdue check, too early to expire it.
+    eq(world.replicateRequests, 1)
+    world.now = world.now + 61
+    ns.Market.Scan(false)
+    eq(world.replicateRequests, 2, "the next scan is not blocked by the lost one")
+end)
+
 test("a scan by hand needs the auction house open", function()
     local _, world = Mock.Boot()
     SlashCmdList.TRADINGBOOK("scan")
@@ -3313,6 +3343,33 @@ test("with Auctionator, the auction house tab lists what its prices show", funct
     prices[1001] = 80
     update()
     eq(watched.rows[1].price, 80, "follows Auctionator while open")
+end)
+
+test("a scan the server never answers gives its wait back and says so, so the button can scan", function()
+    local ns, world = Mock.Boot()
+    local ah = Mock.LoadAuctionHouseUI()
+    openAuctionHouse()
+    eq(world.replicateRequests, 1)
+    click(TradingBookAuctionHouseTab)
+    local panel = auctionHousePanel(ah)
+    local function tick()
+        panel.scripts.OnUpdate(panel, 1)
+        return auctionHouseStatus(panel)
+    end
+    local _, state, button = tick()
+    eq(state, "Scanning the auction house...")
+    eq(button.enabled, false)
+
+    world.now = world.now + 61
+    _, state, button = tick()
+    eq(state, "Ready to scan")
+    eq(button.enabled, true, "the button can try again")
+    eq(has(world.printed[#world.printed], "did not answer the scan"), true, world.printed[#world.printed])
+
+    click(button)
+    eq(world.replicateRequests, 2)
+    answerScan({ auction(1001, 1, 100) })
+    eq(ns.Market.GetItem(1001).price, 100)
 end)
 
 test("the auction house tab shows the scan, the undercut auctions and the watched items", function()
