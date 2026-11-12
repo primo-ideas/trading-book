@@ -1,8 +1,8 @@
 local _, ns = ...
 local L = ns.L
 
--- Prices read from the auction house itself, for when Auctionator is missing or has
--- no data. One request replicates every auction of the realm, which the game allows
+-- Prices read from the auction house itself, scanned only when the player asks for
+-- it. One request replicates every auction of the realm, which the game allows
 -- every 15 minutes. Each item keeps its lowest buyout per unit and the quantity on
 -- sale, and the items the account deals in also keep one price a day, for the trend.
 local Market = {}
@@ -10,15 +10,12 @@ ns.Market = Market
 
 local SCAN_INTERVAL_SECONDS = 15 * 60
 local ANSWER_TIMEOUT_SECONDS = 60
--- After the owned auctions are requested, once the auction house UI has settled.
-local AUTO_SCAN_DELAY_SECONDS = 2
 local AUCTIONATOR_DELAY_SECONDS = 1
 local ENTRIES_PER_FRAME = 2000
 local KEEP_DAYS = 30
 local CHANGE_MIN_DAYS = 7
 -- The fewest daily prices an item's usual price is read from.
 local USUAL_MIN_DAYS = 3
-local AUCTIONATOR_SAMPLE = 50
 local SECONDS_PER_DAY = 86400
 local SOLD = 1
 -- Every caged pet shares this item, so its lowest price says nothing about any of them.
@@ -160,22 +157,6 @@ function Market.GetUsualPrice(itemID)
         days = days + 1
     end
     return days >= USUAL_MIN_DAYS and total / days or nil
-end
-
--- Auctionator scans by itself. It only counts as having data when it prices some of
--- the items the account has dealt in.
-function Market.AuctionatorHasData()
-    local checked = 0
-    for itemID in pairs(ns.db.items) do
-        if ns.Stats.GetAuctionatorPrice(itemID) then
-            return true
-        end
-        checked = checked + 1
-        if checked >= AUCTIONATOR_SAMPLE then
-            break
-        end
-    end
-    return false
 end
 
 -- Queries ---------------------------------------------------------------------------
@@ -326,9 +307,9 @@ function Market.GetScanState()
     return state
 end
 
--- byHand: asked for by the player, who is then told what happens. Returns whether
--- a scan was requested.
-function Market.Scan(byHand)
+-- Asked for by the player, who is told what happens. Returns whether a scan was
+-- requested.
+function Market.Scan()
     ExpireUnanswered()
     local message = nil
     if state then
@@ -340,29 +321,17 @@ function Market.Scan(byHand)
             ns.FormatDuration(Market.NextScanAt() - time()))
     end
     if message then
-        if byHand then
-            ns.Print(message)
-        end
+        ns.Print(message)
         return false
     end
 
     state = "waiting"
-    scan = { byHand = byHand, previousRequestedAt = ns.db.market.requestedAt }
+    scan = { previousRequestedAt = ns.db.market.requestedAt }
     SendRequest()
     -- Checked again once the answer is overdue, should nothing look at the state.
     C_Timer.After(ANSWER_TIMEOUT_SECONDS + 1, ExpireUnanswered)
-    if byHand then
-        ns.Print(L["Scanning the auction house..."])
-    end
+    ns.Print(L["Scanning the auction house..."])
     return true
-end
-
-function Market.IsAutoScanEnabled()
-    return not ns.db.ui.noAutoScan
-end
-
-function Market.SetAutoScanEnabled(enabled)
-    ns.db.ui.noAutoScan = not enabled or nil
 end
 
 ns.OnEvent("REPLICATE_ITEM_LIST_UPDATE", function()
@@ -374,15 +343,9 @@ ns.OnEvent("REPLICATE_ITEM_LIST_UPDATE", function()
     ReadSome()
 end)
 
+-- Opening the auction house never scans it: only the button or /tradingbook scan does.
 ns.OnEvent("AUCTION_HOUSE_SHOW", function()
     auctionHouseOpen = true
-    if Market.IsAutoScanEnabled() and not Market.AuctionatorHasData() then
-        C_Timer.After(AUTO_SCAN_DELAY_SECONDS, function()
-            if auctionHouseOpen then
-                Market.Scan(false)
-            end
-        end)
-    end
 end)
 
 -- Auctionator says when its prices change, after a scan but also after each search,
@@ -402,7 +365,7 @@ end)
 -- dropped and the previous prices stay.
 ns.OnEvent("AUCTION_HOUSE_CLOSED", function()
     auctionHouseOpen = false
-    if state and (state == "reading" or scan.byHand) then
+    if state then
         ns.Print(L["The auction house scan stopped as the auction house closed."])
     end
     state, scan = nil, nil

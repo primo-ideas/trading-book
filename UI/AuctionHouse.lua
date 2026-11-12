@@ -206,7 +206,7 @@ local function CreatePanel()
     scanButton:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PADDING, -PADDING)
     scanButton:SetText(L["Scan"])
     scanButton:SetScript("OnClick", function()
-        ns.Market.Scan(true)
+        ns.Market.Scan()
         RefreshStatus()
     end)
 

@@ -143,8 +143,6 @@ ns.Translation = {
     ["The window's size, in percent like the game's UI scale."] = "창의 크기를 게임의 UI 크기 비율처럼 퍼센트로 나타냅니다.",
 
     -- Auction house scan
-    ["Scan the auction house"] = "경매장 검색",
-    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "경매장을 열 때 검색합니다. 게임이 허용하는 대로 최대 15분마다 한 번이며, Auctionator에 이미 가격이 있으면 하지 않습니다. /tradingbook scan으로 직접 검색할 수 있습니다.",
     ["Scanning the auction house..."] = "경매장을 검색하는 중...",
     ["Auction house scanned: %s items priced."] = "경매장 검색 완료: 아이템 %s개의 가격을 확인했습니다.",
     ["Open the auction house to scan it."] = "검색하려면 경매장을 여세요.",

@@ -143,8 +143,6 @@ ns.Translation = {
     ["The window's size, in percent like the game's UI scale."] = "窗口的大小，以百分比表示，与游戏的界面缩放相同。",
 
     -- Auction house scan
-    ["Scan the auction house"] = "扫描拍卖行",
-    ["Scans it when it opens, at most every 15 minutes as the game allows, unless Auctionator already has prices. /tradingbook scan starts a scan by hand."] = "打开拍卖行时进行扫描，按游戏限制最多每15分钟一次；若 Auctionator 已有价格则不扫描。输入 /tradingbook scan 可手动扫描。",
     ["Scanning the auction house..."] = "正在扫描拍卖行...",
     ["Auction house scanned: %s items priced."] = "拍卖行扫描完成：已获取 %s 件物品的价格。",
     ["Open the auction house to scan it."] = "请打开拍卖行以进行扫描。",
