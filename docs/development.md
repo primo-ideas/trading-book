@@ -48,6 +48,7 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Market.lua` | Auction house scan and the prices it keeps |
 | `Selling.lua` | Quick selling: what can be listed, the price to propose, the listing |
 | `Shopping.lua` | The shopping list of the tracked recipes, its quantities and buying |
+| `Profit.lua` | What each item earns, how well it sells, and the advice deduced from them |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
 | `UI/` | Window, tables, tabs, settings and their order page, item tooltips, the auction house tab and its quick sell and shopping views |
 | `tests/` | Fake client and tests |

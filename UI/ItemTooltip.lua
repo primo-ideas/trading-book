@@ -74,6 +74,30 @@ local BLOCKS = {
             end
         end,
     },
+    {
+        key = "profit",
+        label = L["Profit"],
+        Add = function(tooltip, item)
+            local profit = item.profit
+            if not profit then
+                return
+            end
+            if profit.unitProfit then
+                UI.AddValueLine(tooltip, L["Profit per unit (90 days)"], ns.FormatSignedMoney(profit.unitProfit))
+            end
+            if profit.sellThrough then
+                UI.AddValueLine(tooltip, L["Sold %"], ns.FormatPercent(profit.sellThrough))
+            end
+            if profit.timeToSell then
+                UI.AddValueLine(tooltip, L["Time to sell"], ns.FormatDuration(profit.timeToSell))
+            end
+            local advice = profit.advice and ns.Profit.ADVICE[profit.advice]
+            if advice then
+                local color = advice.bad and UI.Colors.loss or UI.Colors.gain
+                tooltip:AddLine(advice.text, color[1], color[2], color[3], true)
+            end
+        end,
+    },
 }
 
 local blockOrder = UI.RegisterOrder("tooltip", L["Item tooltips"])
@@ -96,6 +120,7 @@ local function AddLines(tooltip, itemID)
         sales = ns.Stats.GetSaleStats(itemID),
         market = not ns.Stats.GetAuctionatorPrice(itemID) and ns.Market.GetItem(itemID) or nil,
         watched = ns.Watch.Get(itemID),
+        profit = ns.Profit.GetRecent(itemID),
     }
     for _, key in ipairs(UI.GetOrder("tooltip")) do
         FindBlock(key).Add(tooltip, item)

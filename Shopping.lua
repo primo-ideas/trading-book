@@ -238,6 +238,12 @@ local function CraftUnitCost(tiers, recipes)
     return best
 end
 
+-- What a unit of an item costs to craft with the tracked recipes, from
+-- Shopping.GetRecipes(), or nil.
+function Shopping.GetCraftCost(itemID, recipes)
+    return CraftUnitCost({ itemID }, recipes)
+end
+
 -- One row per component, as { key, itemID, name, need, held, produced, have, buy, unit,
 -- cost, craftUnit, recipes }. Stacks of every quality of a component count towards it.
 function Shopping.GetList(recipes)

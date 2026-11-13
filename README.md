@@ -28,7 +28,7 @@ The installed folder is replaced every time, so keep nothing in it. Saved data l
 
 Drag the minimap icon to move it. `/tradingbook minimap` hides it or brings it back.
 
-Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get Trading Book's lines, together at the bottom and without a title, to save room: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Without a price from Auctionator, which shows its own, they also give the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. A watched item also shows its price targets. Nothing is added for an item that has none of these, nor in Trading Book's own windows, which already show the same. `/tradingbook tooltip` hides the lines or brings them back.
+Item tooltips, wherever the game shows them (bags, bank, auction house, chat links), get Trading Book's lines, together at the bottom and without a title, to save room: the account's stock of that item by character and place and its value, your average sale price over 90 days, and your last sale. Over the same 90 days they also give what a unit earned you, how much of what you listed sold, how long a sale took after its listing, and a word of advice (see the Stats tab). Without a price from Auctionator, which shows its own, they also give the auction house price from Trading Book's scan, how long ago it was seen, the quantity on sale, and the change since the latest daily price at least a week old. A watched item also shows its price targets. Nothing is added for an item that has none of these, nor in Trading Book's own windows, which already show the same. `/tradingbook tooltip` hides the lines or brings them back.
 
 The auction house window gets a Trading Book tab, after its own and in line with Auctionator's when it is installed. At its top: when the auction house was last scanned, when the game allows the next scan, and a button to scan it. Below, three views:
 
@@ -58,13 +58,13 @@ The settings are in the game's options, under AddOns > Trading Book. A right-cli
 | **Custom window scale** | Gives the window a scale of its own, which replaces the game's UI scale: the window then keeps its size when the game's scale changes. Turned on, it starts from the game's current scale, so nothing moves yet. Turned off, the window follows the game's scale again. |
 | **Window scale** | That scale, from 50% to 120% in steps of 5%, in the same percent as the game's UI scale. Greyed out while the window follows the game. The window stays centred on the same spot when it changes. |
 
-The **Order** page, under Trading Book in the same options, puts three things in the order you like, with arrows to move each item up or down: the window's tabs, the first of which is the one the window opens on, the blocks of item tooltips (stock, auction house price, price targets, sales), and the tiles of the Stats tab. The window follows at once, even open. **Default order**, or the options' Defaults button, brings back the original order.
+The **Order** page, under Trading Book in the same options, puts three things in the order you like, with arrows to move each item up or down: the window's tabs, the first of which is the one the window opens on, the blocks of item tooltips (stock, auction house price, price targets, sales, profit), and the tiles of the Stats tab. The window follows at once, even open. **Default order**, or the options' Defaults button, brings back the original order.
 
 | Tab | Content |
 | --- | --- |
 | **Auctions** | History of sales, purchases, listings, expiries and cancellations, plus your active auctions, marked when undercut. |
 | **Stock** | Tradable items, filtered by location (bags, personal bank, shared stock, mail, auction house), with the change over 7 days and an estimated value. |
-| **Stats** | Profit, sales, purchases, fees, sell-through, stock value and gold, over 7, 30 or 90 days or all time, with the result per day and per item. |
+| **Stats** | Net result, profit on sales, sales, purchases, fees, sell-through, stock value and gold change, over 7, 30 or 90 days or all time, with the result per day and per item. See [What each item earns](#what-each-item-earns). |
 | **Gold** | Gold curve, change, average per day, best and worst day, peak, the auctions' share of the gains, and the breakdown by holder. |
 
 The data covers the whole account. The menu at the top right narrows the display to one character, including one you are not logged in on. "Shared stock" means the Warband bank: since it belongs to no one, its filter shows it whichever character is selected.
@@ -72,6 +72,17 @@ The data covers the whole account. The menu at the top right narrows the display
 A gold change only counts what changed since Trading Book started following the holder: a character's first login is not a gain, and moving gold to the shared stock does not change the total. "Outside auctions" is the difference between the gold change and the auction result, so a sale not yet collected from the mail can temporarily shift that split.
 
 Stock value comes from Auctionator if it has a price, otherwise from Trading Book's auction house scan, otherwise from the average of your sales over 90 days. An item with no known price counts as zero.
+
+## What each item earns
+
+The Stats tab's item table deduces, for each item of the period:
+
+- **Profit**: the sales after the auction house cut, less the deposits lost on listings that did not sell and the cancellation costs, less what the units sold cost. That cost is the average price you paid for the item on the auction house, whenever you bought it; or, for an item you never bought, what one of your tracked recipes takes to craft it at today's prices. An item neither bought nor crafted (gathered, looted) counts as free. Hovering the row details each part.
+- **Sold %**: the share of what you listed that sold, among the auctions that ended (sold, expired or cancelled).
+- **Time to sell**: on average, how long a sale came after its listing, from the latest listing of that item on that character that the auction could have lasted from.
+- **Advice**: *Unsold* when nothing sold and deposits were lost, *Loss* when it sells for less than it costs, *Slow* when under 30% of at least four ended units sold, *Fees* when lost deposits and cancellations take over a quarter of what it brings, and *Good* when it earns money and 70% or more of at least four units sold.
+
+The **Profit on sales** tile adds up the items' profits. Unlike **Net profit**, which follows the money in and out, it leaves out the stock bought but not sold yet, and takes off the cost of what was sold.
 
 ## Languages
 
