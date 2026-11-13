@@ -2997,8 +2997,8 @@ end
 test("an order keeps the known keys, drops the others, and gives new ones their default rank", function()
     local ns = Mock.Boot()
     eq(orderText(ns, "tabs"), "auctions,stock,stats,gold", "the default")
-    eq(orderText(ns, "tooltip"), "stock,market,watch,sales")
-    eq(orderText(ns, "tiles"), "net,sales,spent,fees,sellThrough,stockValue,gold,goldChange")
+    eq(orderText(ns, "tooltip"), "stock,market,watch,sales,profit")
+    eq(orderText(ns, "tiles"), "net,profit,sales,spent,fees,sellThrough,stockValue,goldChange")
 
     TradingBookDB.ui.order = { tabs = { "gold", "gone", "stats", "gold" } }
     eq(orderText(ns, "tabs"), "auctions,stock,gold,stats")
@@ -3017,7 +3017,7 @@ test("the settings have a page to put the tabs, tooltip blocks and Stats tiles i
     local lists = orderRows(page)
     local tabs = lists["Window tabs"]
     eq(#tabs, 4)
-    eq(#lists["Item tooltips"], 4)
+    eq(#lists["Item tooltips"], 5)
     eq(#lists["Stats tiles"], 8)
     eq(lists["Item tooltips"][2].Label:GetText(), "Auction house price")
     eq(lists["Stats tiles"][8].Label:GetText(), "Gold change")
@@ -3042,7 +3042,7 @@ test("the settings have a page to put the tabs, tooltip blocks and Stats tiles i
 
     lists["Stats tiles"][3].Up.scripts.OnClick(lists["Stats tiles"][3].Up)
     page.OnDefault()
-    eq(orderText(ns, "tiles"), "net,sales,spent,fees,sellThrough,stockValue,gold,goldChange",
+    eq(orderText(ns, "tiles"), "net,profit,sales,spent,fees,sellThrough,stockValue,goldChange",
         "the options panel's Defaults button")
 end)
 
@@ -3078,14 +3078,15 @@ test("the Stats tiles follow the order, in the open window too", function()
     end
     ns.UI.MoveInOrder("tiles", "spent", -1)
     ns.UI.MoveInOrder("tiles", "spent", -1)
+    ns.UI.MoveInOrder("tiles", "spent", -1)
     ns.UI.Open("stats")
     local first, second = Mock.Rect(tiles.net), Mock.Rect(tiles.spent)
     eq(second.left < first.left, true, "purchases before net profit")
     near(second.top, first.top, 0.01, "on the same row")
 
     ns.UI.MoveInOrder("tiles", "goldChange", -1)
-    local gold, change = Mock.Rect(tiles.gold), Mock.Rect(tiles.goldChange)
-    eq(change.left < gold.left, true, "rearranged in the open window")
+    local stock, change = Mock.Rect(tiles.stockValue), Mock.Rect(tiles.goldChange)
+    eq(change.left < stock.left, true, "rearranged in the open window")
 end)
 
 test("item tooltips have no title, and their blocks follow the order", function()
@@ -4506,6 +4507,122 @@ test("the keys buy while the Purchases view shows", function()
     eq(world.bindings.SPACE, "CLICK " .. POST .. ":LeftButton")
     click(AuctionHouseFrame.Tabs[1])
     eq(next(world.bindings), nil)
+end)
+
+-- Profit and how items sell ------------------------------------------------------------
+
+-- Five items, one for each kind of advice, and one with nothing to say.
+local function seedProfit(ns, world)
+    local now = world.now
+    local function add(entry)
+        ns.Ledger.Add(entry)
+    end
+    -- Herb: bought at 100 each, 6 of 10 sold six hours after listing.
+    add({ kind = "bought", t = now - 86400, itemID = 1001, name = "Herb", qty = 10, gross = 1000 })
+    add({ kind = "post", t = now - 10 * 3600, itemID = 1001, name = "Herb", qty = 10, deposit = 50 })
+    add({ kind = "sold", t = now - 4 * 3600, itemID = 1001, name = "Herb", qty = 6, gross = 1200, cut = 60, deposit = 30 })
+    add({ kind = "expired", t = now - 3600, itemID = 1001, name = "Herb", qty = 4 })
+    -- Ore: listed, never sold.
+    add({ kind = "post", t = now - 50 * 3600, itemID = 1002, name = "Ore", qty = 5, deposit = 100 })
+    add({ kind = "expired", t = now - 2 * 3600, itemID = 1002, name = "Ore", qty = 5 })
+    -- Gem: one of ten sold, and three days after its listing, too long to be that listing's.
+    add({ kind = "post", t = now - 80 * 3600, itemID = 1003, name = "Gem", qty = 10, deposit = 10 })
+    add({ kind = "sold", t = now - 3600, itemID = 1003, name = "Gem", qty = 1, gross = 1000, cut = 50, deposit = 1 })
+    add({ kind = "expired", t = now - 3600, itemID = 1003, name = "Gem", qty = 9 })
+    -- Flask: crafted from two herbs, sold below that.
+    add({ kind = "sold", t = now - 3600, itemID = 5001, name = "Flask", qty = 1, gross = 300, cut = 15 })
+    -- Soul dust: everything listed sold.
+    add({ kind = "post", t = now - 3 * 3600, itemID = 6001, name = "Soul dust", qty = 4, deposit = 4 })
+    add({ kind = "sold", t = now - 2 * 3600, itemID = 6001, name = "Soul dust", qty = 4, gross = 400, cut = 20, deposit = 4 })
+    trackRecipe(world, 11, "Make flask", 5001, { { 1001, 2 } })
+end
+
+test("an item's profit takes off the cut, the lost fees and what it cost to buy or craft", function()
+    local ns, world = Mock.Boot()
+    seedProfit(ns, world)
+    local items = ns.Profit.Analyze({ since = ns.Stats.PeriodStart(7) })
+
+    local herb = items[1001]
+    eq(herb.proceeds, 1140, "after the cut")
+    eq(herb.feesLost, 20, "the deposit not refunded")
+    eq(herb.costSource, "bought")
+    eq(herb.unitCost, 100)
+    eq(herb.profit, 1140 - 20 - 600)
+    near(herb.unitProfit, 520 / 6, 0.001)
+    eq(herb.sellThrough, 0.6)
+    eq(herb.timeToSell, 6 * 3600)
+    eq(herb.advice, nil, "nothing to say")
+
+    local flask = items[5001]
+    eq(flask.costSource, "crafted")
+    eq(flask.unitCost, 400, "two herbs at their average sale of 200")
+    eq(flask.profit, 285 - 400)
+    eq(flask.advice, "loss")
+    eq(flask.timeToSell, nil, "never listed here")
+
+    eq(items[1002].advice, "unsold")
+    eq(items[1002].profit, -100, "the deposit is lost")
+    eq(items[1003].advice, "slow")
+    eq(items[1003].costSource, nil, "neither bought nor crafted: counted as free")
+    eq(items[1003].timeToSell, nil, "no listing an auction could have lasted from")
+    eq(items[6001].advice, "good")
+    eq(ns.Profit.Total(items), 520 - 100 + 950 - 9 - 115 + 380)
+end)
+
+test("the Stats tab shows what each item earned and how it sells, with advice", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    local values = {}
+    local createTile = ns.UI.CreateTile
+    ns.UI.CreateTile = function(parent, spec, width)
+        local tile = createTile(parent, spec, width)
+        local setValue = tile.SetValue
+        tile.SetValue = function(self, text, color)
+            values[spec.key] = text
+            setValue(self, text, color)
+        end
+        return tile
+    end
+    seedProfit(ns, world)
+    ns.UI.Open("stats")
+    eq(values.profit, ns.FormatSignedMoney(1626), "the profit tile")
+
+    local list = tables[1]
+    eq(list.rows[1].itemID, 1003, "the most profitable first")
+    local texts = renderedTexts(list)
+    local function rowText(name)
+        for _, text in ipairs(texts) do
+            if has(text, name) then
+                return text
+            end
+        end
+    end
+    eq(has(rowText("Ore") or "", "Unsold"), true, "an item that only lost its deposits is listed, with advice")
+    eq(has(rowText("Herb") or "", "60.0%|6 h"), true, rowText("Herb"))
+    eq(has(rowText("Soul dust") or "", "Good"), true, rowText("Soul dust"))
+
+    for _, row in ipairs(list.ScrollBox.rendered) do
+        if row.data.itemID == 1003 then
+            GameTooltip.lines = {}
+            row.scripts.OnEnter(row)
+        end
+    end
+    local lines = table.concat(GameTooltip.lines, ";")
+    eq(has(lines, "Unit cost=Free: neither bought nor crafted"), true, lines)
+    eq(has(lines, "Rarely sells"), true, lines)
+end)
+
+test("item tooltips give the profit per unit, how much sells and how fast, with advice", function()
+    local ns, world = Mock.Boot()
+    seedProfit(ns, world)
+    local text = hoverItem(1001)
+    eq(has(text, "Profit per unit (90 days)=+87c"), true, text)
+    eq(has(text, "Sold %=60.0%"), true, text)
+    eq(has(text, "Time to sell=6 h"), true, text)
+    text = hoverItem(1002)
+    eq(has(text, "Did not sell in this period"), true, text)
+    ns.Ledger.Add({ kind = "sold", t = world.now, itemID = 1002, name = "Ore", qty = 5, gross = 5000, cut = 250 })
+    eq(has(hoverItem(1002), "Did not sell"), false, "follows the ledger")
 end)
 
 layoutTest("layout: the shopping list fits its labels, columns and buttons", function()
