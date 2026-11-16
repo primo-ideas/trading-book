@@ -3046,9 +3046,11 @@ test("an order keeps the known keys, drops the others, and gives new ones their 
     eq(ns.UI.MoveInOrder("tabs", "unknown", 1), false)
 end)
 
-test("the settings have a page to put the tabs, tooltip blocks and Stats tiles in order", function()
+test("the settings page ends with the order of the tabs, tooltip blocks and Stats tiles", function()
     local ns = Mock.Boot()
-    local page = Mock.SettingsSubpage("Order")
+    eq(Mock.SettingsPage().subcategories, nil, "no page of its own")
+    eq(table.concat(Mock.SettingsHeaders(), ","), "Order", "a section of the main page")
+    local page, row = Mock.SettingsRow("TradingBookOrderSettingTemplate")
     local lists = orderRows(page)
     local tabs = lists["Window tabs"]
     eq(#tabs, 4)
@@ -3076,7 +3078,7 @@ test("the settings have a page to put the tabs, tooltip blocks and Stats tiles i
     eq(TradingBookDB.ui.order, nil)
 
     lists["Stats tiles"][3].Up.scripts.OnClick(lists["Stats tiles"][3].Up)
-    page.OnDefault()
+    row:GetSetting():SetValueToDefault() -- The options panel's Defaults button.
     eq(orderText(ns, "tiles"), "net,profit,sales,spent,fees,sellThrough,stockValue,goldChange",
         "the options panel's Defaults button")
 end)
@@ -3141,9 +3143,9 @@ test("item tooltips have no title, and their blocks follow the order", function(
     eq(text:find("Last sale", 1, true) < text:find("Stock=", 1, true), true, "sales first: " .. text)
 end)
 
-layoutTest("layout: the order page fits its labels and the options panel", function()
+layoutTest("layout: the order section fits its labels and its row", function()
     local ns = Mock.Boot({ locale = layoutLocale })
-    local page = Mock.SettingsSubpage(ns.L["Order"])
+    local page = Mock.SettingsRow("TradingBookOrderSettingTemplate")
     local bounds = Mock.Rect(page)
     for _, object in ipairs(Mock.Objects()) do
         if object.kind == "text" and Mock.IsWithin(object, page) and object.text ~= "" then

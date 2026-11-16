@@ -9,8 +9,10 @@ local UI = ns.UI
 -- window on a screen.
 local SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 120, 5
 
--- The page where the player puts sections in an order of their own.
+-- The section where the player puts lists in an order of their own.
+local ORDER_TEMPLATE = "TradingBookOrderSettingTemplate"
 local ORDER_MARGIN = 16
+local ORDER_INTRO_HEIGHT = 28
 local ORDER_TITLE_HEIGHT = 22
 local ORDER_ROW_HEIGHT = 24
 local ORDER_ARROW_SIZE = 20
@@ -21,6 +23,7 @@ local ORDER_BUTTON_WIDTH, ORDER_BUTTON_HEIGHT = 170, 22
 local ARROW_ATLAS = "auctionhouse-ui-sortarrow"
 
 local category = nil
+local AddOrderSection
 local settings = {}
 local orderRefreshers = {}
 
@@ -57,7 +60,8 @@ local function GameScalePercent()
 end
 
 local function RegisterSettings()
-    category = Settings.RegisterVerticalLayoutCategory("Trading Book")
+    local layout
+    category, layout = Settings.RegisterVerticalLayoutCategory("Trading Book")
 
     local minimap = AddSetting("MinimapIcon", L["Minimap icon"], Settings.VarType.Boolean, true,
         UI.IsMinimapButtonShown, UI.SetMinimapButtonShown)
@@ -138,11 +142,11 @@ local function RegisterSettings()
         return ownScale:GetValue()
     end)
 
-    Settings.RegisterCanvasLayoutSubcategory(category, UI.CreateOrderPage(), L["Order"])
+    AddOrderSection(layout)
     Settings.RegisterAddOnCategory(category)
 end
 
--- Order page ---------------------------------------------------------------------
+-- Order section ------------------------------------------------------------------
 
 local function CreateArrow(parent, up, tooltip, onClick)
     local button = CreateFrame("Button", nil, parent)
@@ -227,26 +231,9 @@ local function RefreshOrderPage()
     end
 end
 
--- A page of its own under Trading Book's: the longest list on the right, the others
--- on the left, one under the other.
-function UI.CreateOrderPage()
-    local page = CreateFrame("Frame")
-    local title = page:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
-    title:SetPoint("TOPLEFT", page, "TOPLEFT", ORDER_MARGIN, -ORDER_MARGIN)
-    title:SetText(L["Order"])
-    local intro = page:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    intro:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    intro:SetPoint("RIGHT", page, "RIGHT", -ORDER_MARGIN, 0)
-    intro:SetJustifyH("LEFT")
-    intro:SetText(L["Put the window's tabs, the blocks of item tooltips and the Stats tiles in the order you like."])
-
-    local left = CreateFrame("Frame", nil, page)
-    left:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -ORDER_LIST_GAP)
-    left:SetPoint("RIGHT", page, "CENTER", -ORDER_COLUMN_GAP / 2, 0)
-    local right = CreateFrame("Frame", nil, page)
-    right:SetPoint("TOPLEFT", left, "TOPRIGHT", ORDER_COLUMN_GAP, 0)
-    right:SetPoint("RIGHT", page, "RIGHT", -ORDER_MARGIN, 0)
-
+-- The lists split in two columns: the longest on the right, the others on the left, one
+-- under the other. Returns the lists of each column and the height of the taller one.
+local function SplitLists()
     local lists = UI.GetOrderLists()
     local longest = lists[1]
     for _, list in ipairs(lists) do
@@ -254,23 +241,60 @@ function UI.CreateOrderPage()
             longest = list
         end
     end
-    local leftHeight, rightHeight = 0, 0
+    local left, right = {}, { longest }
+    local leftHeight = 0
     for _, list in ipairs(lists) do
-        local box = CreateOrderList(page, list)
-        if list == longest then
-            box:SetPoint("TOPLEFT", right, "TOPLEFT", 0, -rightHeight)
-            box:SetPoint("TOPRIGHT", right, "TOPRIGHT", 0, -rightHeight)
-            rightHeight = rightHeight + box:GetHeight() + ORDER_LIST_GAP
-        else
-            box:SetPoint("TOPLEFT", left, "TOPLEFT", 0, -leftHeight)
-            box:SetPoint("TOPRIGHT", left, "TOPRIGHT", 0, -leftHeight)
-            leftHeight = leftHeight + box:GetHeight() + ORDER_LIST_GAP
+        if list ~= longest then
+            table.insert(left, list)
+            leftHeight = leftHeight + ORDER_TITLE_HEIGHT + #list.items * ORDER_ROW_HEIGHT + ORDER_LIST_GAP
         end
     end
-    left:SetHeight(math.max(leftHeight, rightHeight))
-    right:SetHeight(math.max(leftHeight, rightHeight))
+    local rightHeight = ORDER_TITLE_HEIGHT + #longest.items * ORDER_ROW_HEIGHT + ORDER_LIST_GAP
+    return left, right, math.max(leftHeight, rightHeight)
+end
 
-    local reset = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+local function OrderHeight()
+    local _, _, columnsHeight = SplitLists()
+    return ORDER_INTRO_HEIGHT + ORDER_LIST_GAP + columnsHeight + ORDER_BUTTON_HEIGHT + ORDER_MARGIN
+end
+
+-- Fills the row of the options list that holds the order lists.
+local function BuildOrderSection(row)
+    local content = CreateFrame("Frame", nil, row)
+    content:SetAllPoints()
+    -- Above the row's own label area, which would catch the clicks on the arrows.
+    content:SetFrameLevel(row:GetFrameLevel() + 5)
+
+    local intro = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    intro:SetPoint("TOPLEFT", content, "TOPLEFT", ORDER_MARGIN, 0)
+    intro:SetPoint("RIGHT", content, "RIGHT", -ORDER_MARGIN, 0)
+    intro:SetHeight(ORDER_INTRO_HEIGHT)
+    intro:SetJustifyH("LEFT")
+    intro:SetJustifyV("TOP")
+    intro:SetText(L["Put the window's tabs, the blocks of item tooltips and the Stats tiles in the order you like."])
+
+    local leftLists, rightLists, columnsHeight = SplitLists()
+    local top = -ORDER_INTRO_HEIGHT - ORDER_LIST_GAP
+    local left = CreateFrame("Frame", nil, content)
+    left:SetPoint("TOPLEFT", content, "TOPLEFT", ORDER_MARGIN, top)
+    left:SetPoint("RIGHT", content, "CENTER", -ORDER_COLUMN_GAP / 2, 0)
+    left:SetHeight(columnsHeight)
+    local right = CreateFrame("Frame", nil, content)
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", ORDER_COLUMN_GAP, 0)
+    right:SetPoint("RIGHT", content, "RIGHT", -ORDER_MARGIN, 0)
+    right:SetHeight(columnsHeight)
+
+    for _, column in ipairs({ { frame = left, lists = leftLists }, { frame = right, lists = rightLists } }) do
+        local height = 0
+        for _, list in ipairs(column.lists) do
+            local box = CreateOrderList(content, list)
+            box:SetPoint("TOPLEFT", column.frame, "TOPLEFT", 0, -height)
+            box:SetPoint("TOPRIGHT", column.frame, "TOPRIGHT", 0, -height)
+            height = height + box:GetHeight() + ORDER_LIST_GAP
+        end
+    end
+
+    local reset = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     reset:SetSize(ORDER_BUTTON_WIDTH, ORDER_BUTTON_HEIGHT)
     reset:SetPoint("TOPLEFT", left, "BOTTOMLEFT", 0, 0)
     reset:SetText(L["Default order"])
@@ -278,13 +302,46 @@ function UI.CreateOrderPage()
     table.insert(orderRefreshers, function()
         reset:SetEnabled(ns.db.ui.order ~= nil)
     end)
+    content:SetScript("OnShow", RefreshOrderPage)
+    return content
+end
 
-    -- Called by the options panel: its Defaults button, and each time the page shows.
-    page.OnDefault = UI.ResetOrders
-    page.OnRefresh = RefreshOrderPage
-    page:SetScript("OnShow", RefreshOrderPage)
-    RefreshOrderPage()
-    return page
+-- The order lists end Trading Book's page, under a header of their own, in one row of
+-- the options list. That row comes from a template only Trading Book uses
+-- (UI/OrderSetting.xml), so the list never hands it to another setting.
+-- The rows already filled with the section, which the list shows again as it scrolls.
+local builtRows = {}
+
+AddOrderSection = function(layout)
+    -- Its value only says whether an order of one's own is kept: the panel's Defaults
+    -- button sets it back, which restores the default order.
+    local setting = AddSetting("Order", L["Order"], Settings.VarType.Boolean, false,
+        function()
+            return ns.db.ui.order ~= nil
+        end,
+        function(value)
+            if not value then
+                UI.ResetOrders()
+            end
+        end)
+    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(L["Order"]))
+    local initializer = Settings.CreateElementInitializer(ORDER_TEMPLATE, { name = "", setting = setting })
+    local baseInit = initializer.InitFrame
+    function initializer:GetExtent()
+        return OrderHeight()
+    end
+    function initializer:InitFrame(row)
+        baseInit(self, row)
+        -- The row's label and its tooltip area stay empty.
+        if row.Tooltip then
+            row.Tooltip:Hide()
+        end
+        if not builtRows[row] then
+            builtRows[row] = BuildOrderSection(row)
+        end
+        RefreshOrderPage()
+    end
+    layout:AddInitializer(initializer)
 end
 
 ns.Subscribe("ORDER_CHANGED", RefreshOrderPage)

@@ -50,7 +50,7 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Shopping.lua` | The shopping list of the tracked recipes, its quantities and buying |
 | `Profit.lua` | What each item earns, how well it sells, and the advice deduced from them |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
-| `UI/` | Window, tables, tabs, settings and their order page, item tooltips, the auction house tab and its quick sell and shopping views |
+| `UI/` | Window, tables, tabs, settings and their order section (with `OrderSetting.xml`, the template of its row), item tooltips, the auction house tab and its quick sell and shopping views |
 | `tests/` | Fake client and tests |
 | `docs/` | This documentation |
 | `.github/workflows/` | Continuous integration |

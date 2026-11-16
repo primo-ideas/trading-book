@@ -143,6 +143,7 @@ function Object:SetAtlas(atlas, useAtlasSize)
     end
 end
 function Object:SetJustifyH(justify) self.justify = justify end
+function Object:SetJustifyV(justify) self.justifyV = justify end
 function Object:SetAlpha(alpha) self.alpha = alpha end
 function Object:SetEnabled(enabled) self.enabled = enabled end
 function Object:SetFrameLevel(level) self.frameLevel = level end
@@ -545,10 +546,17 @@ local function InstallApi()
         VarType = { Boolean = "boolean", String = "string", Number = "number" },
         RegisterVerticalLayoutCategory = function(name)
             assert(type(name) == "string")
-            local category = { name = name, id = 1000 + #world.settingsCategories, controls = {} }
+            local category = { name = name, id = 1000 + #world.settingsCategories, controls = {}, initializers = {} }
             function category:GetID() return self.id end
             table.insert(world.settingsCategories, category)
-            return category, {}
+            -- Rows added by hand, such as section headers, after the controls.
+            local layout = {}
+            function layout:AddInitializer(initializer)
+                assert(type(initializer) == "table" and initializer.template, "Not an initializer")
+                assert(not category.registered, "Row added after the category was registered")
+                table.insert(category.initializers, initializer)
+            end
+            return category, layout
         end,
         RegisterProxySetting = NewProxySetting,
         CreateCheckbox = function(category, setting, tooltip)
@@ -567,17 +575,15 @@ local function InstallApi()
             assert(setting:GetVariableType() == "number" and options ~= nil)
             return AddControl(category, "slider", setting, options, tooltip)
         end,
-        -- The options panel sizes a canvas page to its content area, about this big.
-        RegisterCanvasLayoutSubcategory = function(category, frame, name)
-            assert(category and category.controls, "RegisterCanvasLayoutSubcategory needs a category")
-            assert(frame and type(name) == "string")
-            assert(not category.registered, "Subcategory added after the category was registered")
-            frame.rect = { left = 300, right = 900, top = 900, bottom = 340 }
-            local subcategory = { name = name, frame = frame, id = 2000 + #world.settingsCategories }
-            function subcategory:GetID() return self.id end
-            category.subcategories = category.subcategories or {}
-            table.insert(category.subcategories, subcategory)
-            return subcategory, {}
+        -- A row of the options list built from a frame template. The list asks for its
+        -- height, then has it fill a frame made from that template.
+        CreateElementInitializer = function(template, data)
+            assert(type(template) == "string" and type(data) == "table")
+            local initializer = { template = template, data = data }
+            function initializer:GetExtent() return 26 end
+            function initializer:InitFrame(frame) frame.initializer = self end
+            function initializer:GetSetting() return self.data.setting end
+            return initializer
         end,
         CreateControlTextContainer = function()
             local container = { data = {} }
@@ -601,6 +607,10 @@ local function InstallApi()
             world.openedSettings = categoryID
         end,
     }
+    G.CreateSettingsListSectionHeaderInitializer = function(name)
+        assert(type(name) == "string")
+        return { template = "SettingsListSectionHeaderTemplate", data = { name = name } }
+    end
     G.MinimalSliderWithSteppersMixin = { Label = { Left = 1, Right = 2, Top = 3, Min = 4, Max = 5 } }
 
     G.ButtonFrameTemplate_HideButtonBar = function(frame)
@@ -975,14 +985,33 @@ function Mock.SettingsControl(name)
     error("No setting named " .. name)
 end
 
--- A page of its own under the add-on's, such as a canvas, by name.
-function Mock.SettingsSubpage(name)
-    for _, subcategory in ipairs(Mock.SettingsPage().subcategories or {}) do
-        if subcategory.name == name then
-            return subcategory.frame
+-- The settings row built from a template, filled as the options list would: a frame
+-- as wide as the list, as tall as the row asks. Returns the frame and its initializer.
+function Mock.SettingsRow(template)
+    for _, initializer in ipairs(Mock.SettingsPage().initializers) do
+        if initializer.template == template then
+            assert((world.xml or ""):find('name="' .. template .. '"', 1, true), "Template not defined: " .. template)
+            local frame = NewObject({ frameType = "Frame", parent = realG.UIParent })
+            -- What SettingsListElementTemplate gives each row: its label's tooltip area.
+            frame.Tooltip = NewObject({ frameType = "Frame", parent = frame })
+            local height = initializer:GetExtent()
+            frame.rect = { left = 300, right = 900, top = 900, bottom = 900 - height }
+            initializer:InitFrame(frame)
+            return frame, initializer
         end
     end
-    error("No settings page named " .. name)
+    error("No settings row from " .. template)
+end
+
+-- The section headers of the settings page, in order.
+function Mock.SettingsHeaders()
+    local names = {}
+    for _, initializer in ipairs(Mock.SettingsPage().initializers) do
+        if initializer.template == "SettingsListSectionHeaderTemplate" then
+            table.insert(names, initializer.data.name)
+        end
+    end
+    return names
 end
 
 -- The game's auction house window, as its addon creates it the first time the auction
@@ -1180,7 +1209,16 @@ function Mock.Boot(options)
 
     local ns = {}
     for _, path in ipairs(TocFiles()) do
-        local chunk, err = loadfile(path)
+        local chunk, err
+        if path:match("%.xml$") then
+            -- Templates only: the client reads them, the tests look into them.
+            local file = assert(io.open(path), "Missing file: " .. path)
+            world.xml = (world.xml or "") .. file:read("*a")
+            file:close()
+            chunk = function() end
+        else
+            chunk, err = loadfile(path)
+        end
         if not chunk then
             error("Syntax error: " .. tostring(err), 0)
         end
