@@ -30,6 +30,8 @@ for _, spec in ipairs(TILES) do
 end
 
 local period = 30
+-- Narrows the item table only: the tiles and the chart keep the whole period.
+local search = ""
 local tiles, tilesPane, chart, itemsTable = nil, nil, nil, nil
 
 -- The items of the period, with what they earned and how they sold.
@@ -37,7 +39,8 @@ local function BuildItemRows(summary, analysis)
     local rows = {}
     for key, item in pairs(summary.items) do
         local profit = analysis[key]
-        if item.soldQty > 0 or item.boughtQty > 0 or (profit and profit.advice) then
+        if (item.soldQty > 0 or item.boughtQty > 0 or (profit and profit.advice))
+            and UI.MatchesSearch(item.name, search) then
             item.avgSale = item.soldQty > 0 and item.gross / item.soldQty or nil
             item.avgPurchase = item.pricedBoughtQty > 0 and item.spent / item.pricedBoughtQty or nil
             item.profit = profit
@@ -126,6 +129,12 @@ UI.RegisterTab({
             Refresh()
         end)
         segments:SetPoint("LEFT", toolbar, "LEFT")
+
+        local searchBox = UI.CreateSearchBox(toolbar, function(text)
+            search = text
+            Refresh()
+        end)
+        searchBox:SetPoint("RIGHT", toolbar, "RIGHT")
 
         local tilesHeight
         tiles, tilesHeight = UI.CreateTiles(pane, TILES, TILES_PER_ROW, UI.GetOrder("tiles"))

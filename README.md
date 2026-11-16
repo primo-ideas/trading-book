@@ -64,7 +64,7 @@ The **Order** page, under Trading Book in the same options, puts three things in
 | --- | --- |
 | **Auctions** | History of sales, purchases, listings, expiries and cancellations, plus your active auctions, marked when undercut. |
 | **Stock** | Tradable items, filtered by location (bags, personal bank, shared stock, mail, auction house), with the change over 7 days and an estimated value. |
-| **Stats** | Net result, profit on sales, sales, purchases, fees, sell-through, stock value and gold change, over 7, 30 or 90 days or all time, with the result per day and per item. See [What each item earns](#what-each-item-earns). |
+| **Stats** | Net result, profit on sales, sales, purchases, fees, sell-through, stock value and gold change, over 7, 30 or 90 days or all time, with the result per day and per item, which the search box narrows by name. See [What each item earns](#what-each-item-earns). |
 | **Gold** | Gold curve, change, average per day, best and worst day, peak, the auctions' share of the gains, and the breakdown by holder. |
 
 The data covers the whole account. The menu at the top right narrows the display to one character, including one you are not logged in on. "Shared stock" means the Warband bank: since it belongs to no one, its filter shows it whichever character is selected.
@@ -114,7 +114,7 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 - Auctionator's prices only count on the day it saw the item, as it gives neither the time nor the quantity on sale: an item it saw yesterday is left out until it sees it again or Trading Book scans.
 - A purchase whose mail invoice cannot be read has no price: its row shows it as unknown, it counts as zero in the totals, and the Purchases tile of the Stats tab says how many there are.
 - After an interrupted multi-post, the listed quantity stays the one first requested.
-- The cost of crafting an item is not known: profit only counts auction house purchases.
+- Profit knows what an item cost when it was bought on the auction house, or when one of your tracked recipes makes it, at today's prices. Anything else you sell (gathered, looted, or crafted from a recipe you do not track) counts as free, so its profit is too high.
 - The icon follows a circle around the minimap: on a square minimap (ElvUI, for example), it does not reach the corners.
 - Trading Book adds its tooltip lines after the other addons that use the game's tooltip calls, but an addon that adds its own once the tooltip is filled still puts them after Trading Book's.
 

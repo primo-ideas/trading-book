@@ -286,4 +286,5 @@ ns.Translation = {
     ["Unit cost (bought)"] = "Costo unit. (comprato)",
     ["Unit cost (crafted)"] = "Costo unit. (creato)",
     ["Unsold"] = "Invenduto",
+    ["The auction house scan failed. The previous prices are kept."] = "La scansione della casa d'aste non è riuscita. I prezzi precedenti restano.",
 }

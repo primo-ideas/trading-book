@@ -286,4 +286,5 @@ ns.Translation = {
     ["Unit cost (bought)"] = "개당 비용 (구매)",
     ["Unit cost (crafted)"] = "개당 비용 (제작)",
     ["Unsold"] = "미판매",
+    ["The auction house scan failed. The previous prices are kept."] = "경매장 검색에 실패했습니다. 이전 가격을 유지합니다.",
 }

@@ -244,10 +244,9 @@ local function Finish()
 end
 
 -- A few thousand auctions a frame, so that the game does not freeze.
-local function ReadSome()
-    if state ~= "reading" then
-        return
-    end
+local ReadSome
+
+local function ReadBatch()
     local last = math.min(scan.index + ENTRIES_PER_FRAME, scan.total) - 1
     for index = scan.index, last do
         local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, saleStatus, itemID =
@@ -270,6 +269,21 @@ local function ReadSome()
         Finish()
     else
         C_Timer.After(0, ReadSome)
+    end
+end
+
+-- An error while reading would otherwise leave the scan "reading" until the auction
+-- house closes, with the button locked: the scan is dropped, the previous prices stay,
+-- and the error still reaches the game's error display.
+ReadSome = function()
+    if state ~= "reading" then
+        return
+    end
+    local ok, err = pcall(ReadBatch)
+    if not ok then
+        state, scan = nil, nil
+        ns.Print(L["The auction house scan failed. The previous prices are kept."])
+        error(err, 0)
     end
 end
 

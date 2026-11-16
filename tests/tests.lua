@@ -1644,6 +1644,26 @@ test("the stats tab fills its tiles and item table for the chosen period", funct
     eq(sword.avgPurchase, 20000)
 end)
 
+test("the stats search narrows the item table, not the tiles", function()
+    local ns, world = Mock.Boot()
+    local tables = captureTables(ns)
+    seedLedger(ns, world)
+    ns.UI.Open("stats")
+    local box = nil
+    for _, frame in ipairs(Mock.FindFrames("SearchBoxTemplate")) do
+        if Mock.IsVisible(frame) then
+            box = frame
+        end
+    end
+    local summary = ns.Stats.Summarize({ since = ns.Stats.PeriodStart(30) })
+    box:SetText("HERB")
+    box.scripts.OnTextChanged(box, true)
+    Mock.RunTimers()
+    eq(#tables[1].rows, 1)
+    eq(tables[1].rows[1].itemID, 1001, "case is ignored")
+    eq(ns.Stats.Summarize({ since = ns.Stats.PeriodStart(30) }).net, summary.net, "the totals stay whole")
+end)
+
 -- Layout -----------------------------------------------------------------------
 
 -- The heaviest account the game allows, in each language: 12-letter names, and every
@@ -2269,6 +2289,21 @@ test("an unanswered scan is noticed even when nothing looks at its state", funct
     world.now = world.now + 61
     ns.Market.Scan()
     eq(world.replicateRequests, 2, "the next scan is not blocked by the lost one")
+end)
+
+test("an error while reading a scan drops it, keeps the previous prices and frees the button", function()
+    local ns, world = Mock.Boot()
+    scanAuctionHouse()
+    answerScan({ auction(1001, 1, 100) })
+    world.now = world.now + 20 * 60
+    SlashCmdList.TRADINGBOOK("scan")
+    Mock.SetReplicate({ auction(1001, 1, 50), auction(1002, "broken", 10) })
+    local ok, err = pcall(Mock.Fire, "REPLICATE_ITEM_LIST_UPDATE")
+    eq(ok, false, "the error still reaches the game")
+    eq(has(tostring(err), "compare"), true, tostring(err))
+    eq(ns.Market.GetScanState(), nil, "no longer reading")
+    eq(ns.Market.GetItem(1001).price, 100, "previous price kept")
+    eq(has(world.printed[#world.printed], "scan failed"), true, world.printed[#world.printed])
 end)
 
 test("a scan by hand needs the auction house open", function()

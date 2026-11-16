@@ -286,4 +286,5 @@ ns.Translation = {
     ["Unit cost (bought)"] = "單件成本（購買）",
     ["Unit cost (crafted)"] = "單件成本（製作）",
     ["Unsold"] = "未售出",
+    ["The auction house scan failed. The previous prices are kept."] = "拍賣場掃描失敗。保留之前的價格。",
 }
