@@ -42,7 +42,7 @@ After each scan, and as Auctionator's prices change, your auctions on sale that 
 
 When you leave the mailbox, one line in the chat sums up the auction house mail you collected: the sales and the money they brought, the purchases and what they cost, and the expiries.
 
-The settings are in the game's options, under AddOns > Trading Book. A right-click on the minimap icon or on the addon menu entry opens them, as does `/tradingbook settings`.
+The settings are in the game's options, under AddOns > Trading Book. A right-click on the minimap icon or on the addon menu entry opens them, as does `/tradingbook settings`. Hovering a setting explains it, and the page's **Defaults** button, at its top right, brings back every default, the order of the lists included.
 
 | Setting | Effect |
 | --- | --- |
@@ -58,7 +58,7 @@ The settings are in the game's options, under AddOns > Trading Book. A right-cli
 | **Custom window scale** | Gives the window a scale of its own, which replaces the game's UI scale: the window then keeps its size when the game's scale changes. Turned on, it starts from the game's current scale, so nothing moves yet. Turned off, the window follows the game's scale again. |
 | **Window scale** | That scale, from 50% to 120% in steps of 5%, in the same percent as the game's UI scale. Greyed out while the window follows the game. The window stays centred on the same spot when it changes. |
 
-The **Order** section, at the end of the same page, puts three things in the order you like, with arrows to move each item up or down: the window's tabs, the first of which is the one the window opens on, the blocks of item tooltips (stock, auction house price, price targets, sales, profit), and the tiles of the Stats tab. The window follows at once, even open. **Default order**, or the options' Defaults button, brings back the original order.
+The **Order** section, at the end of the same page, puts three things in the order you like, with arrows to move each item up or down: the window's tabs, the first of which is the one the window opens on, the blocks of item tooltips (stock, auction house price, price targets, sales, profit), and the tiles of the Stats tab. The window follows at once, even open. **Default order**, or the page's Defaults button, brings back the original order.
 
 | Tab | Content |
 | --- | --- |
@@ -123,7 +123,7 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 The fake client used by the tests draws nothing and reflects my reading of the API. These points remain to be confirmed:
 
 1. **Interface**: window and portrait, Trading Book's own icon (stack of coins) on the portrait, the minimap button and in the addon list and menu, tabs, character menu, columns, scrolling, charts, minimap icon (appearance, dragging, position kept after relogging). The tests check the margins, but with an estimated text width.
-2. **Settings**: the page appears under AddOns, opens from a right-click on the icon and on the addon menu entry, greys out the scale slider while the custom scale is off, and "Defaults" brings back the game's scale. With a custom scale, the window keeps its size when the game's UI scale changes, stays where it was when its scale changes, and its menus and tooltips still line up with it.
+2. **Settings**: the page appears under AddOns, opens from a right-click on the icon and on the addon menu entry, scrolls down to the Order section, explains each setting on hover, greys out the scale slider and its label while the custom scale is off, and its Defaults button brings back the game's scale. Using items or abilities from the action bars, opening the Warband bank with the Distance Inhibitor and searching the key bindings, after the page was opened or not, raise no "blocked from an action" message (see [Settings and taint](docs/development.md#settings-and-taint)). With a custom scale, the window keeps its size when the game's UI scale changes, stays where it was when its scale changes, and its menus and tooltips still line up with it.
 3. **Sale**: the cut and deposit shown match the mail's invoice. This is the most uncertain point: if the invoice cannot be read when collecting, the amount falls back to the mail's money and the cut to zero.
 4. **Purchase**: the price is filled in after collecting the mail. If it is not, the purchase shows an unknown price and the Purchases tile counts it.
 5. **Listing**: a single row with the right deposit, including with Auctionator and in a multi-post.
@@ -133,7 +133,7 @@ The fake client used by the tests draws nothing and reflects my reading of the A
 9. **Item tooltips**: the lines appear at the bottom, with no title, on items in the bags, the banks, the auction house and chat links, but neither in Trading Book's windows nor on the comparison tooltips, and hovering an item in combat raises no error.
 10. **Auction house scan**: the request is answered by `REPLICATE_ITEM_LIST_UPDATE`, indexes start at 0, the buyout covers the whole stack, the game does not freeze or disconnect while it is read, a request within 15 minutes is refused without harm, and the prices match those of the auction house. Undercut auctions are the ones the auction house shows beaten, which relies on the price of an owned commodity auction being per unit.
 11. **Translations**: none has been reviewed by a native speaker or seen in the client. The game's vocabulary (Warband bank, deposit, auction house) should be compared with each version, and long strings checked on screen, German and Russian above all.
-12. **Order section**: it ends Trading Book's options page, under its own header, with no page of its own; its arrows can be clicked, its labels fit, the options' Defaults button resets it, and after a change the window's selected tab is still the one highlighted.
+12. **Order section**: it ends Trading Book's options page, under its own header; its arrows can be clicked, its labels fit, the page's Defaults button resets it, and after a change the window's selected tab is still the one highlighted.
 13. **Auction house tab**: it sits after the game's tabs, in line with Auctionator's when it is installed. Clicking it replaces the auction house's content with its panel, above the player's money, and changes the title. Clicking any other tab, the game's or Auctionator's, brings that tab's content and highlight back, and reopening the auction house starts on the game's first tab. Using bag items in combat after a visit to the auction house raises no "action blocked" message. The status counts down to the next scan and the button scans.
 14. **Auctionator's prices**: after a scan in Auctionator, the undercuts, the watched items and the Trading Book tab follow its prices, and its searches do not fill the chat.
 15. **Quick sell**: the list holds what the bags can sell, a stack posts in one press, the price shown is the one the auction house shows, the deposit matches, and the game's confirmation dialog appears when it wants one. Space, Shift-Space and Backspace work, and Space jumps again once the tab is left. Several copies of an item that does not stack post one after the other.

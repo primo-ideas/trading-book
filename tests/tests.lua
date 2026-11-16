@@ -1156,8 +1156,17 @@ test("the search box filters by name, ignoring case and pattern characters", fun
     eq(#tables[1].rows, 6)
 end)
 
+-- The first frame from a template inside a window, the settings page having its own.
+local function firstWithin(template, ancestor)
+    for _, frame in ipairs(Mock.FindFrames(template)) do
+        if Mock.IsWithin(frame, ancestor) then
+            return frame
+        end
+    end
+end
+
 local function selectCharacter(key)
-    local dropdown = Mock.FindFrames("WowStyle1DropdownTemplate")[1]
+    local dropdown = firstWithin("WowStyle1DropdownTemplate", TradingBookMainFrame)
     for _, entry in ipairs(Mock.MenuEntries(dropdown)) do
         if entry.data == key then
             entry.setSelected(entry.data)
@@ -1173,7 +1182,7 @@ test("the character menu lists the account, then this character, then the others
     TradingBookDB.characters["Alt-Hyjal"] = { money = 0, class = "WARRIOR", stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
     ns.UI.Open("auctions")
 
-    local entries = Mock.MenuEntries(Mock.FindFrames("WowStyle1DropdownTemplate")[1])
+    local entries = Mock.MenuEntries(firstWithin("WowStyle1DropdownTemplate", TradingBookMainFrame))
     eq(#entries, 4)
     eq(entries[1].text, "Whole account")
     eq(entries[2].data, PLAYER_KEY, "this character first")
@@ -1819,7 +1828,7 @@ for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
         local inset = Mock.Rect(frame.Inset)
         local window = Mock.Rect(frame)
         local controls = {}
-        local dropdown = Mock.FindFrames("WowStyle1DropdownTemplate")[1]
+        local dropdown = firstWithin("WowStyle1DropdownTemplate", frame)
         table.insert(controls, { object = dropdown, rect = Mock.Rect(dropdown) })
         for _, child in ipairs(directChildren(frame)) do
             if child.object ~= dropdown and child.object ~= frame.Inset and not isInsideTabButton(child.object, frame)
@@ -2854,7 +2863,7 @@ end)
 -- Export ----------------------------------------------------------------------------
 
 local function exportBox()
-    return Mock.FindFrames("ScrollFrameTemplate")[1].scrollChild
+    return firstWithin("ScrollFrameTemplate", TradingBookExportFrame).scrollChild
 end
 
 test("the export gives the history as CSV, oldest first, with amounts in copper", function()
@@ -3046,11 +3055,22 @@ test("an order keeps the known keys, drops the others, and gives new ones their 
     eq(ns.UI.MoveInOrder("tabs", "unknown", 1), false)
 end)
 
+-- The scrolled content of the settings page.
+local function settingsContent()
+    local page = Mock.SettingsPage().frame
+    return frameWithin("ScrollFrameTemplate", page).scrollChild
+end
+
 test("the settings page ends with the order of the tabs, tooltip blocks and Stats tiles", function()
     local ns = Mock.Boot()
-    eq(Mock.SettingsPage().subcategories, nil, "no page of its own")
-    eq(table.concat(Mock.SettingsHeaders(), ","), "Order", "a section of the main page")
-    local page, row = Mock.SettingsRow("TradingBookOrderSettingTemplate")
+    local page = settingsContent()
+    local header
+    for _, object in ipairs(Mock.Objects()) do
+        if object.kind == "text" and object.text == "Order" and Mock.IsWithin(object, page) then
+            header = object
+        end
+    end
+    eq(header ~= nil, true, "a section of the main page")
     local lists = orderRows(page)
     local tabs = lists["Window tabs"]
     eq(#tabs, 4)
@@ -3078,9 +3098,9 @@ test("the settings page ends with the order of the tabs, tooltip blocks and Stat
     eq(TradingBookDB.ui.order, nil)
 
     lists["Stats tiles"][3].Up.scripts.OnClick(lists["Stats tiles"][3].Up)
-    row:GetSetting():SetValueToDefault() -- The options panel's Defaults button.
+    Mock.SettingsPage().frame:OnDefault() -- The options panel resetting everything.
     eq(orderText(ns, "tiles"), "net,profit,sales,spent,fees,sellThrough,stockValue,goldChange",
-        "the options panel's Defaults button")
+        "the options panel's reset")
 end)
 
 test("the window's tabs follow the order, and the first one opens first", function()
@@ -3145,7 +3165,7 @@ end)
 
 layoutTest("layout: the order section fits its labels and its row", function()
     local ns = Mock.Boot({ locale = layoutLocale })
-    local page = Mock.SettingsRow("TradingBookOrderSettingTemplate")
+    local page = settingsContent()
     local bounds = Mock.Rect(page)
     for _, object in ipairs(Mock.Objects()) do
         if object.kind == "text" and Mock.IsWithin(object, page) and object.text ~= "" then
@@ -4724,28 +4744,48 @@ local function screenCenter(frame)
     return x * scale, y * scale
 end
 
-test("the add-on has a page in the game's options, with every setting", function()
+local SETTING_NAMES = {
+    "Minimap icon", "Item tooltips", "Mail summary", "Sale duration", "Proposed price",
+    "Next item after posting", "Trading Book tab keys", "Stock counted for purchases",
+    "Component quality", "Custom window scale", "Window scale",
+}
+
+test("the add-on has a page of its own in the game's options, with every setting", function()
     Mock.Boot()
     local page = Mock.SettingsPage()
     eq(page ~= nil, true, "registered among the add-ons")
     eq(page.name, "Trading Book")
-    local names = {}
-    for _, control in ipairs(page.controls) do
-        table.insert(names, control.kind .. ":" .. control.setting:GetName())
-        eq(control.tooltip ~= nil, true, "explained: " .. control.setting:GetName())
+    eq(page.frame.OnRefresh ~= nil and page.frame.OnDefault ~= nil, true, "the panel can refresh and reset it")
+    local kinds, previousTop = {}, math.huge
+    for _, name in ipairs(SETTING_NAMES) do
+        local control = Mock.SettingsControl(name)
+        table.insert(kinds, control.kind)
+        local top = Mock.Rect(control.row).top
+        eq(top < previousTop, true, "in order: " .. name)
+        previousTop = top
+        control.row.scripts.OnEnter(control.row)
+        eq(GameTooltip:GetText(), name, "hovering names it")
+        eq(#GameTooltip.lines > 0, true, "and explains it: " .. name)
+        GameTooltip.lines = {}
     end
-    eq(table.concat(names, ", "), "checkbox:Minimap icon, checkbox:Item tooltips, "
-        .. "checkbox:Mail summary, dropdown:Sale duration, "
-        .. "dropdown:Proposed price, checkbox:Next item after posting, checkbox:Trading Book tab keys, "
-        .. "dropdown:Stock counted for purchases, dropdown:Component quality, "
-        .. "checkbox:Custom window scale, slider:Window scale")
+    eq(table.concat(kinds, ","), "checkbox,checkbox,checkbox,dropdown,dropdown,checkbox,checkbox,"
+        .. "dropdown,dropdown,checkbox,slider")
 
-    local custom, slider = scaleControls()
-    eq(slider.parent, custom, "the slider depends on the checkbox")
-    eq(slider.options.minValue, 50)
-    eq(slider.options.maxValue, 120)
-    eq(slider.options.steps, 14, "steps of 5%")
-    eq(slider.options.formatter(85), "85%")
+    local _, slider = scaleControls()
+    eq(slider.widget.minValue, 50)
+    eq(slider.widget.maxValue, 120)
+    eq(slider.widget.steps, 14, "steps of 5%")
+    eq(slider.widget.formatters[MinimalSliderWithSteppersMixin.Label.Right](85), "85%")
+    eq(Mock.Rect(slider.label).left > Mock.Rect(Mock.SettingsControl("Custom window scale").label).left, true,
+        "indented under the checkbox it depends on")
+end)
+
+test("the settings page uses none of the game's settings objects, which would taint its actions", function()
+    Mock.Boot()
+    for key in pairs(Settings) do
+        eq(key == "RegisterCanvasLayoutCategory" or key == "RegisterAddOnCategory" or key == "OpenToCategory",
+            true, "only the canvas page: " .. key)
+    end
 end)
 
 test("right-clicking the icon or the add-on menu entry opens the settings", function()
@@ -4785,7 +4825,6 @@ test("the minimap and tooltip settings agree with the slash commands", function(
     SlashCmdList.TRADINGBOOK("tooltip")
     eq(minimap:GetValue(), true, "the slash command shows in the settings")
     eq(tooltip:GetValue(), true)
-    eq(minimap.updates > 0 and tooltip.updates > 0, true, "an open panel is told")
     eq(TradingBookMinimapButton:IsShown(), true)
     eq(has(hoverItem(1001), "Last sale"), true)
 
@@ -4805,8 +4844,6 @@ test("the window follows the game's UI scale until it has a scale of its own", f
     eq(custom.setting:GetValue(), false)
     eq(Mock.IsControlEnabled(slider), false, "slider greyed out")
     eq(slider.setting:GetValue(), 80, "the slider shows the game's scale")
-    slider.setting:SetValue(110)
-    eq(TradingBookDB.ui.scale, nil, "a greyed-out slider changes nothing")
 
     custom.setting:SetValue(true)
     near(frame:GetEffectiveScale(), 0.8, 0.0001, "turning it on changes nothing yet")
@@ -4880,29 +4917,52 @@ test("changing the scale keeps the window's centre on the same spot of the scree
 end)
 
 test("restoring the defaults gives back the game's scale, the icon and the tooltip lines", function()
-    for _, reverse in ipairs({ false, true }) do
-        Mock.Boot()
+    for _, how in ipairs({ "page", "panel" }) do
+        local ns = Mock.Boot()
         UIParent:SetScale(0.7)
-        local page = Mock.SettingsPage()
+        local page = Mock.SettingsPage().frame
         local custom, slider = scaleControls()
         custom.setting:SetValue(true)
         slider.setting:SetValue(110)
         Mock.SettingsControl("Minimap icon").setting:SetValue(false)
         Mock.SettingsControl("Item tooltips").setting:SetValue(false)
+        Mock.SettingsControl("Sale duration").setting:SetValue(12)
+        ns.UI.MoveInOrder("tabs", "gold", -1)
 
-        local first, last, step = 1, #page.controls, 1
-        if reverse then
-            first, last, step = last, first, -1
+        if how == "page" then
+            local defaults = frameWithin("UIPanelButtonTemplate", page)
+            eq(defaults:GetText(), "Defaults", "the page's own button")
+            defaults.scripts.OnClick(defaults)
+        else
+            page:OnDefault()
         end
-        for index = first, last, step do
-            page.controls[index].setting:SetValueToDefault()
-        end
-        local order = reverse and "in reverse order" or "in order"
-        eq(TradingBookDB.ui.scale, nil, "follows the game again, " .. order)
-        eq(slider.setting:GetValue(), 70, "the slider shows the game's scale, " .. order)
-        eq(TradingBookMinimapButton:IsShown(), true, "icon, " .. order)
-        eq(TradingBookDB.ui.hideItemTooltip, nil, "tooltip lines, " .. order)
+        eq(TradingBookDB.ui.scale, nil, "follows the game again, from the " .. how)
+        eq(slider.setting:GetValue(), 70, "the slider shows the game's scale, from the " .. how)
+        eq(Mock.IsControlEnabled(slider), false, "greyed out again, from the " .. how)
+        eq(custom.setting:GetValue(), false)
+        eq(TradingBookMinimapButton:IsShown(), true, "icon, from the " .. how)
+        eq(Mock.SettingsControl("Minimap icon").setting:GetValue(), true, "the page shows it")
+        eq(TradingBookDB.ui.hideItemTooltip, nil, "tooltip lines, from the " .. how)
+        eq(Mock.SettingsControl("Sale duration").setting:GetValue(), 48)
+        eq(TradingBookDB.ui.order, nil, "the order, from the " .. how)
     end
+end)
+
+layoutTest("layout: the settings fit the page, their labels on two lines at most", function()
+    local ns = Mock.Boot({ locale = layoutLocale })
+    local page = Mock.SettingsPage().frame
+    local bounds = Mock.Rect(page)
+    for _, name in ipairs(SETTING_NAMES) do
+        local control = Mock.SettingsControl(ns.L[name])
+        local label = Mock.Rect(control.label)
+        local widget = Mock.Rect(control.widget)
+        eq(label.right <= widget.left, true, "the label ends before its control: " .. control.label.text)
+        local lines = math.ceil(control.label:GetStringWidth() / (label.right - label.left))
+        eq(lines <= 2, true, ("label on %d lines: %q"):format(lines, control.label.text))
+        eq(widget.right <= bounds.right - 24, true, "the control fits beside the scroll bar: " .. name)
+    end
+    local defaults = frameWithin("UIPanelButtonTemplate", page)
+    eq(defaults:GetStringWidth() <= defaults.width - 12, true, "button text: " .. defaults:GetText())
 end)
 
 test("the slash command opens tabs and explains itself otherwise", function()

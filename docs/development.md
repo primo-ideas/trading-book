@@ -52,7 +52,7 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Shopping.lua` | The shopping list of the tracked recipes, its quantities and buying |
 | `Profit.lua` | What each item earns, how well it sells, and the advice deduced from them |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
-| `UI/` | Window, tables, tabs, settings and their order section (with `OrderSetting.xml`, the template of its row), item tooltips, the auction house tab and its quick sell and shopping views |
+| `UI/` | Window, tables, tabs, settings page and its order section, item tooltips, the auction house tab and its quick sell and shopping views |
 | `Media/` | Textures: `Icon.tga`, the addon's icon (minimap, window portrait, addon list) |
 | `art/` | Source images, left out of the package: `icon.png`, the icon at 512 x 512, also the CurseForge project icon |
 | `tests/` | Fake client and tests |
@@ -69,3 +69,12 @@ python -c "from PIL import Image; Image.open('art/icon.png').convert('RGBA').res
 ```
 
 Then restart WoW: a texture file new to the addon folder is only found at launch. On CurseForge, upload `art/icon.png` as the project icon.
+
+## Settings and taint
+
+The settings page is a canvas: one frame of Trading Book's own, registered with `Settings.RegisterCanvasLayoutCategory`, with its own checkboxes, dropdowns and slider. It must not go back to the game's settings objects (`Settings.RegisterProxySetting`, `Settings.CreateCheckbox` and the like, or an element initializer):
+
+- The options panel looks a setting up by going through every registered setting, and the action bars do so on every click. An addon's setting carries the addon's taint, so a click on an action button could be blocked (`UseAction`).
+- The panel reuses the frames of its list for every category. A row once filled for an addon's setting keeps its taint, and the game's own options shown in it later get blocked, for instance when searching the key bindings (`IsUserOAuthed`).
+
+A test checks that the page only uses the canvas functions. To find the source of a "blocked from an action" message, type `/console taintLog 1`, reproduce it, leave the game, and read `World of Warcraft\_retail_\Logs\taint.log`; `/console taintLog 0` turns it off again.

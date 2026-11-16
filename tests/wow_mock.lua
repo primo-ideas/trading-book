@@ -29,6 +29,7 @@ local NO_OP_METHODS = {
     "SetFixedFrameLevel", "RegisterForClicks", "SetHighlightTexture",
     "LockHighlight", "UnlockHighlight", "SetThickness", "SetPortraitToAsset",
     "SetMultiLine", "SetMaxLetters", "SetFontObject", "ClearFocus", "SetNumeric",
+    "SetMaxLines", "SetMouseMotionEnabled",
 }
 
 -- Fields that may be read before being set, or never set, on a widget.
@@ -50,6 +51,7 @@ local FONTS = {
     GameFontHighlight = { 7.2, 13 },
     GameFontDisable = { 7.2, 13 },
     GameFontHighlightLarge = { 9.6, 17 },
+    GameFontHighlightHuge = { 12, 20 },
 }
 local COIN_ICON_WIDTH = 14
 
@@ -114,7 +116,13 @@ function Object:GetPoint()
     end
 end
 function Object:SetChecked(checked) self.checked = checked end
-function Object:SetScrollChild(child) self.scrollChild = child end
+-- Like the client, the scrolled content starts at the scroll frame's top left corner.
+function Object:SetScrollChild(child)
+    self.scrollChild = child
+    if next(child.points) == nil then
+        child:SetPoint("TOPLEFT", self, "TOPLEFT")
+    end
+end
 function Object:SetFocus() self.focused = true end
 function Object:HasFocus() return rawget(self, "focused") == true end
 function Object:HighlightText() self.highlighted = true end
@@ -167,8 +175,23 @@ end
 function Object:SetSize(width, height) self.width, self.height = width, height end
 function Object:SetWidth(width) self.width = width end
 function Object:SetHeight(height) self.height = height end
-function Object:GetWidth() return self.width end
-function Object:GetHeight() return self.height end
+-- Like the client, a frame sized by its anchors knows its size once laid out.
+function Object:GetWidth()
+    local width = rawget(self, "width")
+    if width then
+        return width
+    end
+    local rect = Mock.Rect(self)
+    return rect and rect.right - rect.left or 0
+end
+function Object:GetHeight()
+    local height = rawget(self, "height")
+    if height then
+        return height
+    end
+    local rect = Mock.Rect(self)
+    return rect and rect.top - rect.bottom or 0
+end
 function Object:SetScale(scale)
     assert(type(scale) == "number" and scale > 0, "Invalid scale: " .. tostring(scale))
     self.scale = scale
@@ -369,6 +392,39 @@ local TEMPLATES = {
             assert(type(generator) == "function")
             self.generator = generator
         end
+        function frame.GenerateMenu(self)
+            assert(rawget(self, "generator"), "GenerateMenu before SetupMenu")
+            self.generated = (rawget(self, "generated") or 0) + 1
+        end
+    end,
+    UICheckButtonTemplate = function(frame)
+        frame.width, frame.height = 32, 32
+        frame.checked = false
+    end,
+    -- The slider of the game's options: Init sets its range and its labels' formatters,
+    -- and a change of value, by hand or by SetValue, is told to the registered callbacks.
+    MinimalSliderWithSteppersTemplate = function(frame)
+        frame.width, frame.height = 250, 20
+        frame.callbacks = {}
+        function frame.Init(self, value, minValue, maxValue, steps, formatters)
+            assert(type(value) == "number" and minValue < maxValue and steps > 0 and type(formatters) == "table")
+            self.value, self.minValue, self.maxValue, self.steps, self.formatters = value, minValue, maxValue, steps, formatters
+        end
+        function frame.RegisterCallback(self, event, fn, owner)
+            assert(event == "OnValueChanged" and type(fn) == "function" and owner ~= nil)
+            table.insert(self.callbacks, function(value) fn(owner, value) end)
+        end
+        function frame.SetValue(self, value)
+            assert(rawget(self, "minValue"), "SetValue before Init")
+            value = math.max(self.minValue, math.min(self.maxValue, value))
+            if value ~= self.value then
+                self.value = value
+                for _, callback in ipairs(self.callbacks) do
+                    callback(value)
+                end
+            end
+        end
+        function frame.IsSliderEnabled(self) return rawget(self, "enabled") ~= false end
     end,
     WowScrollBoxList = function(frame)
         function frame.SetDataProvider(self, provider, retain)
@@ -445,56 +501,6 @@ local function NewTooltip()
     return tooltip
 end
 
--- The game's options panel ----------------------------------------------------
-
--- Settings checked like the client does: types must match, defaults included.
-local function NewProxySetting(category, variable, variableType, name, defaultValue, getValue, setValue)
-    assert(category and category.controls, "RegisterProxySetting needs a category")
-    assert(type(variable) == "string" and type(name) == "string" and type(variableType) == "string")
-    assert(type(getValue) == "function" and type(setValue) == "function")
-    assert(not world.settings[variable], "Setting variable registered twice: " .. variable)
-    local function Default()
-        if type(defaultValue) == "function" then
-            return defaultValue()
-        end
-        return defaultValue
-    end
-    assert(type(Default()) == variableType, "Default of the wrong type for " .. variable)
-
-    local setting = { variable = variable, name = name, category = category, updates = 0 }
-    function setting:GetName() return name end
-    function setting:GetVariableType() return variableType end
-    function setting:GetDefaultValue() return Default() end
-    function setting:GetValue()
-        local value = getValue()
-        assert(type(value) == variableType, ("%s reads a %s"):format(variable, type(value)))
-        return value
-    end
-    -- Like ApplyValue: the setter only runs on a change.
-    function setting:SetValue(value)
-        assert(type(value) == variableType, ("SetValue %s with a %s"):format(variable, type(value)))
-        if getValue() ~= value then
-            setValue(value)
-        end
-    end
-    function setting:SetValueToDefault() self:SetValue(Default()) end
-    function setting:NotifyUpdate() self.updates = self.updates + 1 end
-    world.settings[variable] = setting
-    return setting
-end
-
-local function AddControl(category, kind, setting, options, tooltip)
-    assert(setting.category == category, "Control in another category than its setting")
-    assert(tooltip == nil or type(tooltip) == "string")
-    local control = { kind = kind, setting = setting, options = options, tooltip = tooltip }
-    function control:SetParentInitializer(parent, predicate)
-        assert(parent and parent ~= self and (predicate == nil or type(predicate) == "function"))
-        self.parent, self.predicate = parent, predicate
-    end
-    table.insert(category.controls, control)
-    return control
-end
-
 local function SplitBagSlot(location)
     return world.bags[location.bag] and world.bags[location.bag][location.slot]
 end
@@ -542,64 +548,15 @@ local function InstallApi()
         end,
     }
 
+    -- The page of an add-on is a frame of its own (a canvas), which the panel shows in
+    -- its right part.
     G.Settings = {
-        VarType = { Boolean = "boolean", String = "string", Number = "number" },
-        RegisterVerticalLayoutCategory = function(name)
-            assert(type(name) == "string")
-            local category = { name = name, id = 1000 + #world.settingsCategories, controls = {}, initializers = {} }
+        RegisterCanvasLayoutCategory = function(frame, name)
+            assert(type(frame) == "table" and type(name) == "string")
+            local category = { name = name, id = 1000 + #world.settingsCategories, frame = frame }
             function category:GetID() return self.id end
             table.insert(world.settingsCategories, category)
-            -- Rows added by hand, such as section headers, after the controls.
-            local layout = {}
-            function layout:AddInitializer(initializer)
-                assert(type(initializer) == "table" and initializer.template, "Not an initializer")
-                assert(not category.registered, "Row added after the category was registered")
-                table.insert(category.initializers, initializer)
-            end
-            return category, layout
-        end,
-        RegisterProxySetting = NewProxySetting,
-        CreateCheckbox = function(category, setting, tooltip)
-            assert(setting:GetVariableType() == "boolean")
-            return AddControl(category, "checkbox", setting, nil, tooltip)
-        end,
-        CreateSliderOptions = function(minValue, maxValue, rate)
-            local options = { minValue = minValue, maxValue = maxValue, steps = (maxValue - minValue) / rate }
-            function options:SetLabelFormatter(labelType, formatter)
-                assert(labelType ~= nil and type(formatter) == "function")
-                self.formatter = formatter
-            end
-            return options
-        end,
-        CreateSlider = function(category, setting, options, tooltip)
-            assert(setting:GetVariableType() == "number" and options ~= nil)
-            return AddControl(category, "slider", setting, options, tooltip)
-        end,
-        -- A row of the options list built from a frame template. The list asks for its
-        -- height, then has it fill a frame made from that template.
-        CreateElementInitializer = function(template, data)
-            assert(type(template) == "string" and type(data) == "table")
-            local initializer = { template = template, data = data }
-            function initializer:GetExtent() return 26 end
-            function initializer:InitFrame(frame) frame.initializer = self end
-            function initializer:GetSetting() return self.data.setting end
-            return initializer
-        end,
-        CreateControlTextContainer = function()
-            local container = { data = {} }
-            function container:Add(value, label)
-                assert(value ~= nil and type(label) == "string")
-                table.insert(self.data, { value = value, label = label })
-            end
-            function container:GetData() return self.data end
-            return container
-        end,
-        CreateDropdown = function(category, setting, options, tooltip)
-            assert(type(options) == "function", "Dropdown options must be a function")
-            for _, option in ipairs(options()) do
-                assert(type(option.value) == setting:GetVariableType(), "Dropdown option of the wrong type")
-            end
-            return AddControl(category, "dropdown", setting, options, tooltip)
+            return category
         end,
         RegisterAddOnCategory = function(category) category.registered = true end,
         OpenToCategory = function(categoryID)
@@ -607,11 +564,11 @@ local function InstallApi()
             world.openedSettings = categoryID
         end,
     }
-    G.CreateSettingsListSectionHeaderInitializer = function(name)
-        assert(type(name) == "string")
-        return { template = "SettingsListSectionHeaderTemplate", data = { name = name } }
-    end
-    G.MinimalSliderWithSteppersMixin = { Label = { Left = 1, Right = 2, Top = 3, Min = 4, Max = 5 } }
+    G.DEFAULTS = "Defaults"
+    G.MinimalSliderWithSteppersMixin = {
+        Label = { Left = 1, Right = 2, Top = 3, Min = 4, Max = 5 },
+        Event = { OnValueChanged = "OnValueChanged", OnInteractStart = "OnInteractStart", OnInteractEnd = "OnInteractEnd" },
+    }
 
     G.ButtonFrameTemplate_HideButtonBar = function(frame)
         frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
@@ -967,51 +924,86 @@ function Mock.MenuEntries(dropdown)
     return entries
 end
 
--- The add-on's page in the game's options, once registered.
+-- The add-on's page in the game's options, once registered, shown as the panel shows
+-- it when the player picks it: in the panel's right part, 600 by 560 here, a little
+-- smaller than in the client, then refreshed.
 function Mock.SettingsPage()
     for _, category in ipairs(world.settingsCategories) do
         if category.registered then
+            local frame = category.frame
+            if not world.settingsCanvas then
+                world.settingsCanvas = NewObject({ frameType = "Frame", parent = realG.UIParent })
+                world.settingsCanvas.rect = { left = 300, right = 900, top = 900, bottom = 340 }
+            end
+            if rawget(frame, "parent") ~= world.settingsCanvas then
+                frame.parent = world.settingsCanvas
+                frame:ClearAllPoints()
+                frame:SetAllPoints(world.settingsCanvas)
+            end
+            frame:Show()
+            if frame.OnRefresh then
+                frame:OnRefresh()
+            end
             return category
         end
     end
 end
 
+local CONTROL_KINDS = {
+    UICheckButtonTemplate = "checkbox",
+    WowStyle1DropdownTemplate = "dropdown",
+    MinimalSliderWithSteppersTemplate = "slider",
+}
+
+-- A setting of the page, found by its label, driven like the player would: a click on
+-- the checkbox, a choice in the dropdown, a move of the slider.
 function Mock.SettingsControl(name)
-    for _, control in ipairs(Mock.SettingsPage().controls) do
-        if control.setting:GetName() == name then
-            return control
+    local page = Mock.SettingsPage().frame
+    for _, object in ipairs(objects) do
+        if object.kind == "text" and object.text == name and Mock.IsWithin(object, page) then
+            local row = rawget(object, "parent")
+            for _, widget in ipairs(objects) do
+                local kind = CONTROL_KINDS[widget.template]
+                if kind and rawget(widget, "parent") == row then
+                    local control = { kind = kind, widget = widget, row = row, label = object }
+                    local setting = {}
+                    function setting:GetName() return name end
+                    function setting:GetValue()
+                        if kind == "checkbox" then
+                            return widget:GetChecked()
+                        elseif kind == "slider" then
+                            return widget.value
+                        end
+                        for _, entry in ipairs(Mock.MenuEntries(widget)) do
+                            if entry.isSelected(entry.data) then
+                                return entry.data
+                            end
+                        end
+                    end
+                    function setting:SetValue(value)
+                        if kind == "checkbox" then
+                            widget:SetChecked(value)
+                            widget.scripts.OnClick(widget, "LeftButton")
+                        elseif kind == "slider" then
+                            assert(widget:IsSliderEnabled(), "A greyed-out slider cannot move: " .. name)
+                            widget:SetValue(value)
+                        else
+                            for _, entry in ipairs(Mock.MenuEntries(widget)) do
+                                if entry.data == value then
+                                    entry.setSelected(entry.data)
+                                    return
+                                end
+                            end
+                            error(("No choice %s in %s"):format(tostring(value), name))
+                        end
+                    end
+                    control.setting = setting
+                    return control
+                end
+            end
         end
     end
     error("No setting named " .. name)
-end
-
--- The settings row built from a template, filled as the options list would: a frame
--- as wide as the list, as tall as the row asks. Returns the frame and its initializer.
-function Mock.SettingsRow(template)
-    for _, initializer in ipairs(Mock.SettingsPage().initializers) do
-        if initializer.template == template then
-            assert((world.xml or ""):find('name="' .. template .. '"', 1, true), "Template not defined: " .. template)
-            local frame = NewObject({ frameType = "Frame", parent = realG.UIParent })
-            -- What SettingsListElementTemplate gives each row: its label's tooltip area.
-            frame.Tooltip = NewObject({ frameType = "Frame", parent = frame })
-            local height = initializer:GetExtent()
-            frame.rect = { left = 300, right = 900, top = 900, bottom = 900 - height }
-            initializer:InitFrame(frame)
-            return frame, initializer
-        end
-    end
-    error("No settings row from " .. template)
-end
-
--- The section headers of the settings page, in order.
-function Mock.SettingsHeaders()
-    local names = {}
-    for _, initializer in ipairs(Mock.SettingsPage().initializers) do
-        if initializer.template == "SettingsListSectionHeaderTemplate" then
-            table.insert(names, initializer.data.name)
-        end
-    end
-    return names
 end
 
 -- The game's auction house window, as its addon creates it the first time the auction
@@ -1057,7 +1049,7 @@ end
 
 -- Greyed out in the panel when its parent's predicate says so.
 function Mock.IsControlEnabled(control)
-    return control.predicate == nil or control.predicate() == true
+    return rawget(control.widget, "enabled") ~= false
 end
 
 -- What a full scan of the auction house returns: { itemID, count, buyout, saleStatus }.
@@ -1157,7 +1149,6 @@ function Mock.Boot(options)
         cursorX = 0,
         cursorY = 0,
         settingsCategories = {},
-        settings = {},
         realm = options.realm or "Hyjal",
         connectedRealms = options.connectedRealms or {},
         replicate = {},

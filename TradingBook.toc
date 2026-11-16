@@ -59,7 +59,6 @@ UI\Charts.lua
 UI\MainFrame.lua
 UI\MinimapButton.lua
 UI\ItemTooltip.lua
-UI\OrderSetting.xml
 UI\Options.lua
 UI\Export.lua
 UI\AuctionsTab.lua
