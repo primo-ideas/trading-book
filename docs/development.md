@@ -19,6 +19,8 @@ On Windows, with the Python install manager, `py install 3.12` adds that version
 
 `.pkgmeta` describes the package: a `TradingBook` folder holding the `.toc` and the files it lists, the same as `install.ps1`.
 
+The summary and description of the project page are in [curseforge.md](curseforge.md), to paste into the project settings whenever they change.
+
 To do once:
 
 1. Create the project on CurseForge and note its ID, under "About This Project" on its overview page.
