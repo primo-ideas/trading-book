@@ -17,7 +17,7 @@ On Windows, with the Python install manager, `py install 3.12` adds that version
 
 ## Publishing on CurseForge
 
-`.pkgmeta` describes the package: a `TradingBook` folder holding the `.toc` and the files it lists, the same as `install.ps1`.
+`.pkgmeta` describes the package: a `TradingBook` folder holding the `.toc`, the files it lists and `Media/`, the same as `install.ps1`.
 
 The summary and description of the project page are in [curseforge.md](curseforge.md), to paste into the project settings whenever they change.
 
@@ -53,7 +53,19 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Profit.lua` | What each item earns, how well it sells, and the advice deduced from them |
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
 | `UI/` | Window, tables, tabs, settings and their order section (with `OrderSetting.xml`, the template of its row), item tooltips, the auction house tab and its quick sell and shopping views |
+| `Media/` | Textures: `Icon.tga`, the addon's icon (minimap, window portrait, addon list) |
+| `art/` | Source images, left out of the package: `icon.png`, the icon at 512 x 512, also the CurseForge project icon |
 | `tests/` | Fake client and tests |
 | `docs/` | This documentation |
 | `.github/workflows/` | Continuous integration |
 | `install.ps1`, `.pkgmeta` | Local install and CurseForge package |
+
+## The icon
+
+The client reads TGA (and BLP) textures, with sides a power of two. After changing `art/icon.png`, rebuild `Media/Icon.tga` from it, an uncompressed 32-bit TGA of 64 x 64, with Pillow (`pip install pillow`):
+
+```powershell
+python -c "from PIL import Image; Image.open('art/icon.png').convert('RGBA').resize((64, 64), Image.LANCZOS).save('Media/Icon.tga')"
+```
+
+Then restart WoW: a texture file new to the addon folder is only found at launch. On CurseForge, upload `art/icon.png` as the project icon.

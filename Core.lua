@@ -4,6 +4,9 @@ local L = ns.L
 -- Global handle for inspecting data in game, e.g. /dump TradingBook.db.ledger[1]
 TradingBook = ns
 
+-- The addon's own icon, made from art/icon.png (see docs/development.md).
+ns.ICON = "Interface\\AddOns\\" .. addonName .. "\\Media\\Icon"
+
 -- Game events ---------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")

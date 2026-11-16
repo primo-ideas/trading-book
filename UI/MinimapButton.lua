@@ -4,7 +4,6 @@ local UI = ns.UI
 
 -- A button on the edge of the minimap. Its look and geometry follow LibDBIcon, so
 -- that it sits naturally among other addons' buttons, without embedding the library.
-local ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local TEXTURE_BORDER = 136430 -- Interface\Minimap\MiniMap-TrackingBorder
 local TEXTURE_BACKGROUND = 136467 -- Interface\Minimap\UI-Minimap-Background
 local TEXTURE_HIGHLIGHT = 136477 -- Interface\Minimap\UI-Minimap-ZoomButton-Highlight
@@ -74,8 +73,7 @@ local function CreateButton()
 
     local icon = button:CreateTexture(nil, "ARTWORK")
     icon:SetSize(18, 18)
-    icon:SetTexture(ICON)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) -- Trims the border drawn into item icons.
+    icon:SetTexture(ns.ICON)
     icon:SetPoint("CENTER", button, "CENTER")
 
     button:SetScript("OnClick", function(_, mouseButton)

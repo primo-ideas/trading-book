@@ -2,7 +2,7 @@
 # slug (trading-book), and the client would not match it to TradingBook.toc.
 package-as: TradingBook
 
-# Same content as install.ps1 installs: the .toc and the files it lists.
+# Same content as install.ps1 installs: the .toc, the files it lists, and Media.
 # Files starting with a dot are always left out.
 ignore:
     - tests
@@ -10,3 +10,4 @@ ignore:
     - README.md
     - docs
     - LICENSE
+    - art

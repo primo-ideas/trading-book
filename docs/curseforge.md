@@ -2,6 +2,10 @@
 
 The texts of the project page on CurseForge, kept here so that they follow the addon. When a feature worth showing is added, changed or removed, update them here, then paste them into the project settings on CurseForge. The description uses CurseForge's Markdown editor.
 
+## Icon
+
+The project icon is `art/icon.png`, the same drawing as the icon in the game.
+
 ## Summary
 
 The catchline shown under the name in search results and lists:

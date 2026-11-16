@@ -15,7 +15,7 @@
 ## Version: @project-version@
 ## SavedVariables: TradingBookDB
 ## OptionalDeps: Auctionator
-## IconTexture: Interface\Icons\INV_Misc_Coin_01
+## IconTexture: Interface\AddOns\TradingBook\Media\Icon
 ## AddonCompartmentFunc: TradingBook_OnAddonCompartmentClick
 ## Category-enUS: Auctions
 ## Category-deDE: Auktionen

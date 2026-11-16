@@ -12,7 +12,7 @@ Status: first draft. The logic is tested outside the game, **but the addon has n
 .\install.ps1
 ```
 
-The script copies `TradingBook.toc` and the files it lists into `Interface\AddOns\TradingBook`, and nothing else: no tests, no README, no Git data. After changing the code, run it again, then `/reload` in game. If the list of files in the `.toc` changed, restart WoW, which only reads it at launch. It needs no administrator rights if your account can write to the WoW folder, which is the default.
+The script copies `TradingBook.toc`, the files it lists and the textures of `Media/` into `Interface\AddOns\TradingBook`, and nothing else: no tests, no README, no Git data. After changing the code, run it again, then `/reload` in game. If the list of files in the `.toc` changed, restart WoW, which only reads it at launch. It needs no administrator rights if your account can write to the WoW folder, which is the default.
 
 | Option | Effect |
 | --- | --- |
@@ -122,7 +122,7 @@ Net profit = sales - purchases - fees, where fees = cut + unrefunded deposits + 
 
 The fake client used by the tests draws nothing and reflects my reading of the API. These points remain to be confirmed:
 
-1. **Interface**: window and portrait, tabs, character menu, columns, scrolling, charts, minimap icon (appearance, dragging, position kept after relogging). The tests check the margins, but with an estimated text width.
+1. **Interface**: window and portrait, Trading Book's own icon (stack of coins) on the portrait, the minimap button and in the addon list and menu, tabs, character menu, columns, scrolling, charts, minimap icon (appearance, dragging, position kept after relogging). The tests check the margins, but with an estimated text width.
 2. **Settings**: the page appears under AddOns, opens from a right-click on the icon and on the addon menu entry, greys out the scale slider while the custom scale is off, and "Defaults" brings back the game's scale. With a custom scale, the window keeps its size when the game's UI scale changes, stays where it was when its scale changes, and its menus and tooltips still line up with it.
 3. **Sale**: the cut and deposit shown match the mail's invoice. This is the most uncertain point: if the invoice cannot be read when collecting, the amount falls back to the mail's money and the cut to zero.
 4. **Purchase**: the price is filled in after collecting the mail. If it is not, the purchase shows an unknown price and the Purchases tile counts it.

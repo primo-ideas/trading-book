@@ -10,7 +10,6 @@ local TOOLBAR_LEFT = 66
 local TOOLBAR_TOP = -30
 local WINDOW_MARGIN = 14
 local DROPDOWN_WIDTH = 170
-local ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local REFRESH_DELAY_SECONDS = 0.2
 local ALL_CHARACTERS = ""
 
@@ -223,7 +222,7 @@ local function CreateMainFrame()
     frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
     frame:SetTitle("Trading Book")
-    frame:SetPortraitToAsset(ICON)
+    frame:SetPortraitToAsset(ns.ICON)
     ButtonFrameTemplate_HideButtonBar(frame)
 
     frame:SetMovable(true)

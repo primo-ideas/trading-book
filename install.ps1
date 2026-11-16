@@ -3,9 +3,9 @@
     Installs the Trading Book addon into World of Warcraft (Retail).
 
 .DESCRIPTION
-    Copies the .toc and the files it lists into Interface\AddOns, and nothing else. The
-    installed folder is replaced every time: after changing the code, run the script
-    again, then /reload in game.
+    Copies the .toc, the files it lists and the textures of Media into Interface\AddOns,
+    and nothing else. The installed folder is replaced every time: after changing the
+    code, run the script again, then /reload in game.
 
 .PARAMETER Clean
     Also deletes Trading Book's saved data (history, stock, gold) on all accounts. This
@@ -62,6 +62,11 @@ if ($Clean -and (Get-Process -Name 'Wow' -ErrorAction SilentlyContinue)) {
 # The .toc is the list of what the client loads, so nothing else needs to be installed.
 $tocLines = @(Get-Content -LiteralPath $tocPath)
 $files = @($tocName) + @($tocLines | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+# Textures are not listed in the .toc: the client loads them by path when the code asks.
+$mediaPath = Join-Path $PSScriptRoot 'Media'
+if (Test-Path -LiteralPath $mediaPath -PathType Container) {
+    $files += @(Get-ChildItem -LiteralPath $mediaPath -File | ForEach-Object { "Media\$($_.Name)" })
+}
 
 $missing = @($files | Where-Object { -not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $_) -PathType Leaf) })
 if ($missing.Count -gt 0) {

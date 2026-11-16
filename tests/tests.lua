@@ -4973,6 +4973,31 @@ for _, locale in ipairs(LOCALES) do
     end)
 end
 
+test("the icon is a texture the client can read, used by the add-on list too", function()
+    local ns = Mock.Boot()
+    local path = ns.ICON:match("^Interface\\AddOns\\TradingBook\\(.+)$")
+    eq(path ~= nil, true, "inside the addon folder: " .. ns.ICON)
+    local file = assert(io.open(path:gsub("\\", "/") .. ".tga", "rb"), "Media/Icon.tga is missing")
+    local header = file:read(18)
+    file:close()
+    local function isPowerOfTwo(n)
+        while n > 1 and n % 2 == 0 do
+            n = n / 2
+        end
+        return n == 1
+    end
+    local width = header:byte(13) + 256 * header:byte(14)
+    local height = header:byte(15) + 256 * header:byte(16)
+    eq(header:byte(3), 2, "uncompressed true color")
+    eq(header:byte(17), 32, "32 bits, with alpha")
+    eq(isPowerOfTwo(width) and isPowerOfTwo(height), true, "sides a power of two")
+    local iconTexture
+    for line in io.lines("TradingBook.toc") do
+        iconTexture = iconTexture or line:match("^## IconTexture: (%S+)")
+    end
+    eq(iconTexture, ns.ICON)
+end)
+
 test("the add-on list has a description and a category in every language", function()
     local lines = {}
     for line in io.lines("TradingBook.toc") do
