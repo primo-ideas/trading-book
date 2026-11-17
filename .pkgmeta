@@ -10,4 +10,5 @@ ignore:
     - README.md
     - docs
     - LICENSE
+    - CLAUDE.md
     - art
