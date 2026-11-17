@@ -116,24 +116,24 @@ ns.Translation = {
     ["%d d"] = "%d дн.",
     ["%d h"] = "%d ч",
     ["%d min"] = "%d мин",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Использование: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
+    ["Usage: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Использование: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "ЛКМ: открыть или закрыть",
     ["Right-click: settings"] = "ПКМ: настройки",
     ["Drag: move"] = "Перетащить: переместить",
-    ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: скрыть этот значок",
-    ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "Значок у миникарты скрыт. Введите /tradingbook minimap, чтобы вернуть его.",
+    ["/tradingessentials minimap: hide this icon"] = "/tradingessentials minimap: скрыть этот значок",
+    ["Minimap icon hidden. Type /tradingessentials minimap to bring it back."] = "Значок у миникарты скрыт. Введите /tradingessentials minimap, чтобы вернуть его.",
 
     -- Item tooltips
     ["Avg. sale (90 days)"] = "Ср. продажа (90 дней)",
     ["Last sale (%s)"] = "Последняя продажа (%s)",
-    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "Строки в подсказках к предметам скрыты. Введите /tradingbook tooltip, чтобы вернуть их.",
+    ["Item tooltip lines hidden. Type /tradingessentials tooltip to bring them back."] = "Строки в подсказках к предметам скрыты. Введите /tradingessentials tooltip, чтобы вернуть их.",
     ["Item tooltip lines shown."] = "Строки в подсказках к предметам снова показаны.",
 
     -- Settings
     ["Minimap icon"] = "Значок у миникарты",
-    ["Shows Trading Book's icon on the edge of the minimap."] = "Показывает значок Trading Book на краю миникарты.",
+    ["Shows Trading Essentials's icon on the edge of the minimap."] = "Показывает значок Trading Essentials на краю миникарты.",
     ["Item tooltips"] = "Подсказки к предметам",
     ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "Добавляет в подсказку к предмету, сколько его на учётной записи и за сколько он продавался.",
     ["Custom window scale"] = "Свой масштаб окна",
@@ -165,7 +165,7 @@ ns.Translation = {
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Когда вы отходите от почтового ящика, кратко сообщает в чате о полученных продажах, покупках и истекших аукционах.",
 
     -- Watch list and export
-    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "Нет отслеживаемых предметов. /tradingbook watch, затем предмет и цена, добавляет предмет.",
+    ["No item is watched. /tradingessentials watch followed by an item and a price adds one."] = "Нет отслеживаемых предметов. /tradingessentials watch, затем предмет и цена, добавляет предмет.",
     ["Watched items:"] = "Отслеживаемые предметы:",
     ["buy at %s or less"] = "купить за %s или дешевле",
     ["sell at %s or more"] = "продать за %s или дороже",
@@ -222,7 +222,7 @@ ns.Translation = {
     ["Quick sell"] = "Быстрая продажа",
     ["Tracking"] = "Отслеживание",
     ["Sale duration"] = "Длительность продажи",
-    ["How long auctions last when quick selling from the Trading Book tab of the auction house."] = "Сколько длятся аукционы при быстрой продаже на вкладке Trading Book аукциона.",
+    ["How long auctions last when quick selling from the Trading Essentials tab of the auction house."] = "Сколько длятся аукционы при быстрой продаже на вкладке Trading Essentials аукциона.",
     ["Proposed price"] = "Предлагаемая цена",
     ["The price quick selling proposes, against the lowest one on sale."] = "Цена, которую предлагает быстрая продажа относительно самой низкой цены на аукционе.",
     ["Next item after posting"] = "Следующий предмет после выставления",
@@ -256,8 +256,8 @@ ns.Translation = {
     ["What is subtracted from the components to buy."] = "Что вычитается из компонентов к покупке.",
     ["Component quality"] = "Качество компонентов",
     ["Which quality of a component the shopping list buys."] = "Какое качество компонента покупает список.",
-    ["Trading Book tab keys"] = "Клавиши вкладки Trading Book",
-    ["In the Trading Book tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "На вкладке Trading Book аукциона: Пробел — выставить или купить, Shift-Пробел — следующий предмет, Backspace — предыдущий.",
+    ["Trading Essentials tab keys"] = "Клавиши вкладки Trading Essentials",
+    ["In the Trading Essentials tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "На вкладке Trading Essentials аукциона: Пробел — выставить или купить, Shift-Пробел — следующий предмет, Backspace — предыдущий.",
     ["Cheapest: %s for %s"] = "Дешевле всего: %s за %s",
     ["Dearer than usual: %s"] = "Дороже обычного: %s",
     ["Craft cost per unit"] = "Стоимость создания за шт.",

@@ -17,12 +17,12 @@ local frame, editBox = nil, nil
 local csv = ""
 
 local function Create()
-    frame = CreateFrame("Frame", "TradingBookExportFrame", UIParent, "ButtonFrameTemplate")
+    frame = CreateFrame("Frame", "TradingEssentialsExportFrame", UIParent, "ButtonFrameTemplate")
     frame:SetSize(WIDTH, HEIGHT)
     frame:SetPoint("CENTER", UIParent, "CENTER")
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
-    frame:SetTitle("Trading Book: " .. L["History as CSV"])
+    frame:SetTitle("Trading Essentials: " .. L["History as CSV"])
     frame:SetPortraitToAsset(ICON)
     ButtonFrameTemplate_HideButtonBar(frame)
     frame:SetMovable(true)
@@ -31,7 +31,7 @@ local function Create()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    table.insert(UISpecialFrames, "TradingBookExportFrame")
+    table.insert(UISpecialFrames, "TradingEssentialsExportFrame")
 
     local hint = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     hint:SetPoint("TOPLEFT", frame, "TOPLEFT", HINT_LEFT, HINT_TOP)

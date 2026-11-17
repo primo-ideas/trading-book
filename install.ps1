@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Installs the Trading Book addon into World of Warcraft (Retail).
+    Installs the Trading Essentials addon into World of Warcraft (Retail).
 
 .DESCRIPTION
     Copies the .toc, the files it lists and the textures of Media into Interface\AddOns,
@@ -8,7 +8,7 @@
     code, run the script again, then /reload in game.
 
 .PARAMETER Clean
-    Also deletes Trading Book's saved data (history, stock, gold) on all accounts. This
+    Also deletes Trading Essentials' saved data (history, stock, gold) on all accounts. This
     cannot be undone: you are asked to confirm, and WoW must be closed. Add
     -Confirm:$false to skip the question.
 
@@ -34,7 +34,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$addonName = 'TradingBook'
+$addonName = 'TradingEssentials'
 $tocName = "$addonName.toc"
 $tocPath = Join-Path $PSScriptRoot $tocName
 $retailPath = Join-Path $WowPath '_retail_'

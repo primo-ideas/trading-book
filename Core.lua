@@ -1,8 +1,8 @@
 local addonName, ns = ...
 local L = ns.L
 
--- Global handle for inspecting data in game, e.g. /dump TradingBook.db.ledger[1]
-TradingBook = ns
+-- Global handle for inspecting data in game, e.g. /dump TradingEssentials.db.ledger[1]
+TradingEssentials = ns
 
 -- The addon's own icon, made from art/icon.png (see docs/development.md).
 ns.ICON = "Interface\\AddOns\\" .. addonName .. "\\Media\\Icon"
@@ -72,8 +72,8 @@ local function MigrateUnpricedPurchases(ledger)
 end
 
 local function InitDB()
-    TradingBookDB = TradingBookDB or {}
-    local db = TradingBookDB
+    TradingEssentialsDB = TradingEssentialsDB or {}
+    local db = TradingEssentialsDB
     db.characters = db.characters or {}
     db.warband = db.warband or { items = {}, money = 0 }
     db.ledger = db.ledger or {}
@@ -252,13 +252,13 @@ function ns.DayKeyToTime(day)
 end
 
 function ns.Print(message)
-    print("|cffffd200Trading Book|r: " .. message)
+    print("|cffffd200Trading Essentials|r: " .. message)
 end
 
 -- Entry points --------------------------------------------------------------
 
-SLASH_TRADINGBOOK1 = "/tradingbook"
-SlashCmdList.TRADINGBOOK = function(message)
+SLASH_TRADINGESSENTIALS1 = "/tradingessentials"
+SlashCmdList.TRADINGESSENTIALS = function(message)
     -- The rest keeps its case and its links: it can name an item.
     local command, rest = message:match("^%s*(%S*)%s*(.-)%s*$")
     command = command:lower()
@@ -281,12 +281,12 @@ SlashCmdList.TRADINGBOOK = function(message)
     elseif command == "tooltip" then
         ns.UI.ToggleItemTooltip()
     else
-        ns.Print(L["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"])
+        ns.Print(L["Usage: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"])
     end
 end
 
 -- Named by AddonCompartmentFunc in the TOC.
-function TradingBook_OnAddonCompartmentClick(_, mouseButton)
+function TradingEssentials_OnAddonCompartmentClick(_, mouseButton)
     if mouseButton == "RightButton" then
         ns.UI.OpenSettings()
     else

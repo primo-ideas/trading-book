@@ -5,8 +5,8 @@ local UI = ns.UI
 -- Adds what the account holds of an item and what it sold for to the item's
 -- tooltip, wherever the game shows one: bags, bank, auction house, chat links.
 -- Without a price from Auctionator, which shows its own, it also gives the auction
--- house price from Trading Book's scan.
--- Trading Book's own windows already show all this, so their tooltips are left alone,
+-- house price from Trading Essentials's scan.
+-- Trading Essentials's own windows already show all this, so their tooltips are left alone,
 -- and so are the comparison tooltips beside an item, which would only repeat it.
 --
 -- The lines come together at the bottom of the tooltip, with no title to save room,
@@ -144,7 +144,7 @@ local function OnItemTooltip(tooltip, data)
 end
 
 -- Post calls run in the order they were added: added once every addon has loaded,
--- Trading Book's lines come after those of the others.
+-- Trading Essentials's lines come after those of the others.
 ns.OnEvent("PLAYER_LOGIN", function()
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnItemTooltip)
 end)
@@ -164,6 +164,6 @@ function UI.ToggleItemTooltip()
     if shown then
         ns.Print(L["Item tooltip lines shown."])
     else
-        ns.Print(L["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."])
+        ns.Print(L["Item tooltip lines hidden. Type /tradingessentials tooltip to bring them back."])
     end
 end

@@ -4,7 +4,7 @@ local UI = ns.UI
 local Shopping = ns.Shopping
 local Colors = UI.Colors
 
--- The shopping list in the Trading Book tab of the auction house: the tracked recipes
+-- The shopping list in the Trading Essentials tab of the auction house: the tracked recipes
 -- and how many times to craft them on the left, what they need on the right, and
 -- buying it one component after the other.
 
@@ -23,7 +23,7 @@ local STEP_WIDTH = 84
 local REFRESH_DELAY_SECONDS = 0.2
 
 local BUY_BUTTON, NEXT_BUTTON, PREVIOUS_BUTTON =
-    "TradingBookShoppingBuy", "TradingBookShoppingNext", "TradingBookShoppingPrevious"
+    "TradingEssentialsShoppingBuy", "TradingEssentialsShoppingNext", "TradingEssentialsShoppingPrevious"
 local SHORTCUTS = {
     SPACE = BUY_BUTTON,
     ["SHIFT-SPACE"] = NEXT_BUTTON,

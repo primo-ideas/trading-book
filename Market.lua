@@ -357,7 +357,7 @@ ns.OnEvent("REPLICATE_ITEM_LIST_UPDATE", function()
     ReadSome()
 end)
 
--- Opening the auction house never scans it: only the button or /tradingbook scan does.
+-- Opening the auction house never scans it: only the button or /tradingessentials scan does.
 ns.OnEvent("AUCTION_HOUSE_SHOW", function()
     auctionHouseOpen = true
 end)
@@ -367,7 +367,7 @@ end)
 ns.OnEvent("PLAYER_LOGIN", function()
     local api = Auctionator and Auctionator.API and Auctionator.API.v1
     if api and api.RegisterForDBUpdate then
-        pcall(api.RegisterForDBUpdate, "TradingBook", function()
+        pcall(api.RegisterForDBUpdate, "TradingEssentials", function()
             ns.Debounce("auctionatorPrices", AUCTIONATOR_DELAY_SECONDS, function()
                 ns.Publish("AUCTIONATOR_PRICES_CHANGED")
             end)

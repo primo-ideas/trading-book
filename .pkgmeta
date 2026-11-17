@@ -1,6 +1,6 @@
 # CurseForge packaging. Without package-as, the zip's folder would take the project
-# slug (trading-book), and the client would not match it to TradingBook.toc.
-package-as: TradingBook
+# slug (trading-book), and the client would not match it to TradingEssentials.toc.
+package-as: TradingEssentials
 
 # Same content as install.ps1 installs: the .toc, the files it lists, and Media.
 # Files starting with a dot are always left out.

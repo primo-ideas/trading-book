@@ -3,7 +3,7 @@ local L = ns.L
 local UI = ns.UI
 local Colors = UI.Colors
 
--- A Trading Book tab in the auction house window: when the auction house was last
+-- A Trading Essentials tab in the auction house window: when the auction house was last
 -- scanned and a button to scan it, above quick selling, the shopping list of the
 -- tracked recipes, or the tracking of undercut auctions and watched items.
 --
@@ -13,7 +13,7 @@ local Colors = UI.Colors
 -- brings it, as Auctionator does, so that they all stand in line and take turns.
 -- Without it, the tab does the same on its own.
 
-local TAB_ID, TAB_TITLE = "TradingBook", "Trading Book"
+local TAB_ID, TAB_TITLE = "TradingEssentials", "Trading Essentials"
 local TAB_GAP = 3
 
 -- Inside the auction house window: below its title bar, above the player's money.
@@ -269,7 +269,7 @@ local function AddOwnTab()
     root:SetSize(10, 10)
     root:SetPoint("TOPLEFT", gameTabs[#gameTabs], "TOPRIGHT")
 
-    local tab = CreateFrame("Button", "TradingBookAuctionHouseTab", root, "AuctionHouseFrameDisplayModeTabTemplate")
+    local tab = CreateFrame("Button", "TradingEssentialsAuctionHouseTab", root, "AuctionHouseFrameDisplayModeTabTemplate")
     tab:SetText(TAB_TITLE)
     tab:SetPoint("TOPLEFT", root, "TOPLEFT", TAB_GAP, 0)
     PanelTemplates_DeselectTab(tab)

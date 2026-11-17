@@ -116,24 +116,24 @@ ns.Translation = {
     ["%d d"] = "%d d",
     ["%d h"] = "%d h",
     ["%d min"] = "%d min",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Uso: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
+    ["Usage: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "Uso: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "Clic izquierdo: abrir o cerrar",
     ["Right-click: settings"] = "Clic derecho: opciones",
     ["Drag: move"] = "Arrastrar: mover",
-    ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: ocultar este ícono",
-    ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "Ícono del minimapa oculto. Escribe /tradingbook minimap para recuperarlo.",
+    ["/tradingessentials minimap: hide this icon"] = "/tradingessentials minimap: ocultar este ícono",
+    ["Minimap icon hidden. Type /tradingessentials minimap to bring it back."] = "Ícono del minimapa oculto. Escribe /tradingessentials minimap para recuperarlo.",
 
     -- Item tooltips
     ["Avg. sale (90 days)"] = "Venta prom. (90 días)",
     ["Last sale (%s)"] = "Última venta (%s)",
-    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "Líneas ocultas en las descripciones de objetos. Escribe /tradingbook tooltip para recuperarlas.",
+    ["Item tooltip lines hidden. Type /tradingessentials tooltip to bring them back."] = "Líneas ocultas en las descripciones de objetos. Escribe /tradingessentials tooltip para recuperarlas.",
     ["Item tooltip lines shown."] = "Líneas visibles de nuevo en las descripciones de objetos.",
 
     -- Settings
     ["Minimap icon"] = "Ícono del minimapa",
-    ["Shows Trading Book's icon on the edge of the minimap."] = "Muestra el ícono de Trading Book en el borde del minimapa.",
+    ["Shows Trading Essentials's icon on the edge of the minimap."] = "Muestra el ícono de Trading Essentials en el borde del minimapa.",
     ["Item tooltips"] = "Descripciones de objetos",
     ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "Agrega a la descripción de un objeto cuánto tiene la cuenta y a qué precio se vendió.",
     ["Custom window scale"] = "Escala propia de la ventana",
@@ -165,7 +165,7 @@ ns.Translation = {
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "Al salir del buzón, resume en el chat las ventas, compras y subastas expiradas que recogiste.",
 
     -- Watch list and export
-    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "No vigilas ningún objeto. /tradingbook watch seguido de un objeto y un precio agrega uno.",
+    ["No item is watched. /tradingessentials watch followed by an item and a price adds one."] = "No vigilas ningún objeto. /tradingessentials watch seguido de un objeto y un precio agrega uno.",
     ["Watched items:"] = "Objetos vigilados:",
     ["buy at %s or less"] = "comprar a %s o menos",
     ["sell at %s or more"] = "vender a %s o más",
@@ -222,7 +222,7 @@ ns.Translation = {
     ["Quick sell"] = "Venta rápida",
     ["Tracking"] = "Seguimiento",
     ["Sale duration"] = "Duración de la venta",
-    ["How long auctions last when quick selling from the Trading Book tab of the auction house."] = "Cuánto duran las subastas al vender rápido desde la pestaña Trading Book de la casa de subastas.",
+    ["How long auctions last when quick selling from the Trading Essentials tab of the auction house."] = "Cuánto duran las subastas al vender rápido desde la pestaña Trading Essentials de la casa de subastas.",
     ["Proposed price"] = "Precio propuesto",
     ["The price quick selling proposes, against the lowest one on sale."] = "El precio que propone la venta rápida respecto al más bajo a la venta.",
     ["Next item after posting"] = "Siguiente objeto tras poner en subasta",
@@ -256,8 +256,8 @@ ns.Translation = {
     ["What is subtracted from the components to buy."] = "Lo que se resta de los componentes por comprar.",
     ["Component quality"] = "Calidad de los componentes",
     ["Which quality of a component the shopping list buys."] = "Qué calidad de cada componente compra la lista.",
-    ["Trading Book tab keys"] = "Teclas de la pestaña Trading Book",
-    ["In the Trading Book tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "En la pestaña Trading Book de la casa de subastas, Espacio pone en subasta o compra, Mayús-Espacio pasa al objeto siguiente y Retroceso al anterior.",
+    ["Trading Essentials tab keys"] = "Teclas de la pestaña Trading Essentials",
+    ["In the Trading Essentials tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "En la pestaña Trading Essentials de la casa de subastas, Espacio pone en subasta o compra, Mayús-Espacio pasa al objeto siguiente y Retroceso al anterior.",
     ["Cheapest: %s for %s"] = "Más barata: %s por %s",
     ["Dearer than usual: %s"] = "Más caro de lo habitual: %s",
     ["Craft cost per unit"] = "Costo de creación por unidad",

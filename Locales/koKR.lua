@@ -116,24 +116,24 @@ ns.Translation = {
     ["%d d"] = "%d일",
     ["%d h"] = "%d시간",
     ["%d min"] = "%d분",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "사용법: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
+    ["Usage: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "사용법: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "왼쪽 클릭: 열기 또는 닫기",
     ["Right-click: settings"] = "오른쪽 클릭: 설정",
     ["Drag: move"] = "드래그: 이동",
-    ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap: 이 아이콘 숨기기",
-    ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "미니맵 아이콘을 숨겼습니다. 다시 표시하려면 /tradingbook minimap을 입력하세요.",
+    ["/tradingessentials minimap: hide this icon"] = "/tradingessentials minimap: 이 아이콘 숨기기",
+    ["Minimap icon hidden. Type /tradingessentials minimap to bring it back."] = "미니맵 아이콘을 숨겼습니다. 다시 표시하려면 /tradingessentials minimap을 입력하세요.",
 
     -- Item tooltips
     ["Avg. sale (90 days)"] = "평균 판매가 (90일)",
     ["Last sale (%s)"] = "최근 판매 (%s)",
-    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "아이템 툴팁의 정보를 숨겼습니다. 다시 표시하려면 /tradingbook tooltip을 입력하세요.",
+    ["Item tooltip lines hidden. Type /tradingessentials tooltip to bring them back."] = "아이템 툴팁의 정보를 숨겼습니다. 다시 표시하려면 /tradingessentials tooltip을 입력하세요.",
     ["Item tooltip lines shown."] = "아이템 툴팁에 정보를 다시 표시합니다.",
 
     -- Settings
     ["Minimap icon"] = "미니맵 아이콘",
-    ["Shows Trading Book's icon on the edge of the minimap."] = "미니맵 가장자리에 Trading Book 아이콘을 표시합니다.",
+    ["Shows Trading Essentials's icon on the edge of the minimap."] = "미니맵 가장자리에 Trading Essentials 아이콘을 표시합니다.",
     ["Item tooltips"] = "아이템 툴팁",
     ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "아이템 툴팁에 계정의 보유량과 판매 가격을 추가합니다.",
     ["Custom window scale"] = "창 전용 크기 비율",
@@ -165,7 +165,7 @@ ns.Translation = {
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "우편함을 떠날 때 받은 판매, 구매, 만료 내역을 대화창에 요약합니다.",
 
     -- Watch list and export
-    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "관심 아이템이 없습니다. /tradingbook watch 뒤에 아이템과 가격을 입력하면 추가됩니다.",
+    ["No item is watched. /tradingessentials watch followed by an item and a price adds one."] = "관심 아이템이 없습니다. /tradingessentials watch 뒤에 아이템과 가격을 입력하면 추가됩니다.",
     ["Watched items:"] = "관심 아이템:",
     ["buy at %s or less"] = "%s 이하로 구매",
     ["sell at %s or more"] = "%s 이상으로 판매",
@@ -222,7 +222,7 @@ ns.Translation = {
     ["Quick sell"] = "빠른 판매",
     ["Tracking"] = "추적",
     ["Sale duration"] = "판매 기간",
-    ["How long auctions last when quick selling from the Trading Book tab of the auction house."] = "경매장의 Trading Book 탭에서 빠른 판매 시 경매가 유지되는 기간입니다.",
+    ["How long auctions last when quick selling from the Trading Essentials tab of the auction house."] = "경매장의 Trading Essentials 탭에서 빠른 판매 시 경매가 유지되는 기간입니다.",
     ["Proposed price"] = "제안 가격",
     ["The price quick selling proposes, against the lowest one on sale."] = "판매 중인 최저가를 기준으로 빠른 판매가 제안하는 가격입니다.",
     ["Next item after posting"] = "등록 후 다음 아이템으로",
@@ -256,8 +256,8 @@ ns.Translation = {
     ["What is subtracted from the components to buy."] = "구매할 재료에서 차감할 재고입니다.",
     ["Component quality"] = "재료 품질",
     ["Which quality of a component the shopping list buys."] = "구매 목록이 고르는 재료의 품질입니다.",
-    ["Trading Book tab keys"] = "Trading Book 탭 단축키",
-    ["In the Trading Book tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "경매장의 Trading Book 탭에서 Space는 등록 또는 구매, Shift-Space는 다음 아이템, Backspace는 이전 아이템입니다.",
+    ["Trading Essentials tab keys"] = "Trading Essentials 탭 단축키",
+    ["In the Trading Essentials tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "경매장의 Trading Essentials 탭에서 Space는 등록 또는 구매, Shift-Space는 다음 아이템, Backspace는 이전 아이템입니다.",
     ["Cheapest: %s for %s"] = "최저가: %s개 %s",
     ["Dearer than usual: %s"] = "평소보다 비쌈: %s",
     ["Craft cost per unit"] = "개당 제작 비용",

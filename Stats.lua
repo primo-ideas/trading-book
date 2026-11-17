@@ -229,7 +229,7 @@ end
 function Stats.GetAuctionatorPrice(itemID)
     local api = Auctionator and Auctionator.API and Auctionator.API.v1
     if api and api.GetAuctionPriceByItemID then
-        local ok, price = pcall(api.GetAuctionPriceByItemID, "TradingBook", itemID)
+        local ok, price = pcall(api.GetAuctionPriceByItemID, "TradingEssentials", itemID)
         if ok and price then
             return price
         end
@@ -241,7 +241,7 @@ end
 function Stats.GetAuctionatorAge(itemID)
     local api = Auctionator and Auctionator.API and Auctionator.API.v1
     if api and api.GetAuctionAgeByItemID then
-        local ok, age = pcall(api.GetAuctionAgeByItemID, "TradingBook", itemID)
+        local ok, age = pcall(api.GetAuctionAgeByItemID, "TradingEssentials", itemID)
         if ok then
             return age
         end

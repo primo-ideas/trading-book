@@ -4,7 +4,7 @@ local UI = ns.UI
 local Selling = ns.Selling
 local Colors = UI.Colors
 
--- Quick selling in the Trading Book tab of the auction house: the bags on the left,
+-- Quick selling in the Trading Essentials tab of the auction house: the bags on the left,
 -- the item being listed on the right. Choosing an item asks the auction house for its
 -- lowest price, proposes one from it, and posting moves on to the next item.
 
@@ -22,7 +22,7 @@ local STEP_WIDTH, STEP_HEIGHT = 100, 22
 local REFRESH_DELAY_SECONDS = 0.2
 
 local POST_BUTTON, NEXT_BUTTON, PREVIOUS_BUTTON =
-    "TradingBookQuickSellPost", "TradingBookQuickSellNext", "TradingBookQuickSellPrevious"
+    "TradingEssentialsQuickSellPost", "TradingEssentialsQuickSellNext", "TradingEssentialsQuickSellPrevious"
 local SHORTCUTS = {
     SPACE = POST_BUTTON,
     ["SHIFT-SPACE"] = NEXT_BUTTON,

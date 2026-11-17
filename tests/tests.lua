@@ -56,11 +56,11 @@ test("a commodity listing is recorded only once the server creates it", function
     local _ = Mock.Boot()
     Mock.SetBagItem(0, 1, 1001, "Herb", 200)
     C_AuctionHouse.PostCommodity(location(0, 1), 2, 50, 3000)
-    eq(#TradingBookDB.ledger, 0, "before creation")
+    eq(#TradingEssentialsDB.ledger, 0, "before creation")
 
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 555)
-    eq(#TradingBookDB.ledger, 1, "after creation")
-    local entry = TradingBookDB.ledger[1]
+    eq(#TradingEssentialsDB.ledger, 1, "after creation")
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.kind, "post")
     eq(entry.itemID, 1001)
     eq(entry.qty, 50)
@@ -76,9 +76,9 @@ test("posting several items at once records one listing with the full quantity",
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 1)
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 2)
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 3)
-    eq(#TradingBookDB.ledger, 1)
-    eq(TradingBookDB.ledger[1].qty, 3)
-    eq(TradingBookDB.ledger[1].deposit, 300)
+    eq(#TradingEssentialsDB.ledger, 1)
+    eq(TradingEssentialsDB.ledger[1].qty, 3)
+    eq(TradingEssentialsDB.ledger[1].deposit, 300)
 end)
 
 test("backing out of a price warning records nothing", function()
@@ -87,7 +87,7 @@ test("backing out of a price warning records nothing", function()
     C_AuctionHouse.PostCommodity(location(0, 1), 1, 10, 3000)
     C_AuctionHouse.CancelSell()
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 9)
-    eq(#TradingBookDB.ledger, 0)
+    eq(#TradingEssentialsDB.ledger, 0)
 end)
 
 test("a confirmed price warning records the listing once", function()
@@ -96,7 +96,7 @@ test("a confirmed price warning records the listing once", function()
     C_AuctionHouse.PostCommodity(location(0, 1), 1, 10, 3000)
     C_AuctionHouse.ConfirmPostCommodity(location(0, 1), 1, 10, 3000)
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 9)
-    eq(#TradingBookDB.ledger, 1)
+    eq(#TradingEssentialsDB.ledger, 1)
 end)
 
 test("a refused listing does not attach to the next one", function()
@@ -107,8 +107,8 @@ test("a refused listing does not attach to the next one", function()
     Mock.Fire("AUCTION_HOUSE_SHOW_ERROR", 1)
     C_AuctionHouse.PostCommodity(location(0, 2), 1, 5, 700)
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 9)
-    eq(#TradingBookDB.ledger, 1)
-    eq(TradingBookDB.ledger[1].itemID, 1002)
+    eq(#TradingEssentialsDB.ledger, 1)
+    eq(TradingEssentialsDB.ledger[1].itemID, 1002)
 end)
 
 test("a listing that never completes expires instead of matching a later one", function()
@@ -117,7 +117,7 @@ test("a listing that never completes expires instead of matching a later one", f
     C_AuctionHouse.PostCommodity(location(0, 1), 1, 10, 3000)
     world.now = world.now + 120
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 9)
-    eq(#TradingBookDB.ledger, 0)
+    eq(#TradingEssentialsDB.ledger, 0)
 end)
 
 -- Cancellations and owned auctions -------------------------------------------
@@ -131,10 +131,10 @@ test("a cancellation records its cost and item, and ends the auction", function(
 
     world.cancelCosts[77] = 450
     C_AuctionHouse.CancelAuction(77)
-    eq(#TradingBookDB.ledger, 0, "before server confirmation")
+    eq(#TradingEssentialsDB.ledger, 0, "before server confirmation")
     Mock.Fire("AUCTION_CANCELED", 77)
 
-    local entry = TradingBookDB.ledger[1]
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.kind, "cancel")
     eq(entry.cost, 450)
     eq(entry.name, "Sword")
@@ -171,7 +171,7 @@ test("a sale takes its amounts and buyer from the invoice", function()
     world.mails = { soldMail("Herb", 100000, { cut = 5000, deposit = 200, count = 20, buyer = "Bob" }) }
     Mock.Fire("MAIL_SHOW")
     TakeInboxMoney(1)
-    local entry = TradingBookDB.ledger[1]
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.kind, "sold")
     eq(entry.itemID, 1001)
     eq(entry.qty, 20)
@@ -187,7 +187,7 @@ test("a sale is dated from the mail's remaining lifetime, not its collection", f
     world.mails = { soldMail("Herb", 100, { daysLeft = 27 }) }
     Mock.Fire("MAIL_SHOW")
     TakeInboxMoney(1)
-    eq(TradingBookDB.ledger[1].t, world.now - 3 * 86400)
+    eq(TradingEssentialsDB.ledger[1].t, world.now - 3 * 86400)
 end)
 
 test("identical mails are all recorded when collected in a row", function()
@@ -200,7 +200,7 @@ test("identical mails are all recorded when collected in a row", function()
         TakeInboxMoney(1)
         Mock.CompleteTake()
     end
-    eq(#TradingBookDB.ledger, 3)
+    eq(#TradingEssentialsDB.ledger, 3)
     eq(#world.mails, 0)
 end)
 
@@ -212,7 +212,7 @@ test("collecting the same mail twice before the server answers counts once", fun
     TakeInboxMoney(1)
     Mock.Fire("MAIL_INBOX_UPDATE") -- Unrelated refresh, mail still there.
     TakeInboxMoney(1)
-    eq(#TradingBookDB.ledger, 1)
+    eq(#TradingEssentialsDB.ledger, 1)
 end)
 
 test("an expired auction with several attachments counts once, with their total", function()
@@ -229,9 +229,9 @@ test("an expired auction with several attachments counts once, with their total"
     Mock.CompleteTake()
     TakeInboxItem(1, 1)
     Mock.CompleteTake()
-    eq(kinds(TradingBookDB.ledger), "expired")
-    eq(TradingBookDB.ledger[1].qty, 250)
-    eq(TradingBookDB.ledger[1].itemID, 1001)
+    eq(kinds(TradingEssentialsDB.ledger), "expired")
+    eq(TradingEssentialsDB.ledger[1].qty, 250)
+    eq(TradingEssentialsDB.ledger[1].itemID, 1001)
 end)
 
 test("a purchase uses the invoice price and the attached item", function()
@@ -243,7 +243,7 @@ test("a purchase uses the invoice price and the attached item", function()
     } }
     Mock.Fire("MAIL_SHOW")
     AutoLootMailItem(1)
-    local entry = TradingBookDB.ledger[1]
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.kind, "bought")
     eq(entry.gross, 60000)
     eq(entry.qty, 20)
@@ -259,7 +259,7 @@ test("a purchase whose invoice cannot be read has an unknown price, left out of 
     } }
     Mock.Fire("MAIL_SHOW")
     AutoLootMailItem(1)
-    local entry = TradingBookDB.ledger[1]
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.kind, "bought")
     eq(entry.gross, nil, "not zero")
     eq(entry.qty, 20)
@@ -268,7 +268,7 @@ test("a purchase whose invoice cannot be read has an unknown price, left out of 
     eq(ns.Ledger.Amount(entry), nil)
 
     ns.Ledger.Add({ kind = "bought", itemID = 1001, name = "Herb", qty = 10, gross = 500 })
-    eq(ns.Ledger.IsPriceUnknown(TradingBookDB.ledger[2]), false)
+    eq(ns.Ledger.IsPriceUnknown(TradingEssentialsDB.ledger[2]), false)
     local summary = ns.Stats.Summarize()
     eq(summary.spent, 500)
     eq(summary.net, -500)
@@ -286,13 +286,13 @@ test("collection failing on full bags can be retried without double counting", f
     Mock.Fire("MAIL_SHOW")
 
     AutoLootMailItem(1)
-    eq(#TradingBookDB.ledger, 1, "recorded on take")
+    eq(#TradingEssentialsDB.ledger, 1, "recorded on take")
     Mock.FailTake()
-    eq(#TradingBookDB.ledger, 0, "undone on failure")
+    eq(#TradingEssentialsDB.ledger, 0, "undone on failure")
 
     AutoLootMailItem(1)
     Mock.CompleteTake()
-    eq(kinds(TradingBookDB.ledger), "expired")
+    eq(kinds(TradingEssentialsDB.ledger), "expired")
 end)
 
 test("a failure after a successful take does not undo that take", function()
@@ -302,7 +302,7 @@ test("a failure after a successful take does not undo that take", function()
     TakeInboxMoney(1)
     Mock.CompleteTake()
     Mock.Fire("MAIL_FAILED", 0) -- Say, a mail being sent bounces.
-    eq(#TradingBookDB.ledger, 1)
+    eq(#TradingEssentialsDB.ledger, 1)
 end)
 
 test("a failure after a successful partial take does not undo the expiry", function()
@@ -315,7 +315,7 @@ test("a failure after a successful partial take does not undo the expiry", funct
     TakeInboxItem(1, 2)
     Mock.CompleteTake() -- The mail stays: only MAIL_SUCCESS tells the take worked.
     Mock.Fire("MAIL_FAILED", 0)
-    eq(#TradingBookDB.ledger, 1)
+    eq(#TradingEssentialsDB.ledger, 1)
 end)
 
 test("a mail leaving the inbox counts as taken even without a success event", function()
@@ -326,7 +326,7 @@ test("a mail leaving the inbox counts as taken even without a success event", fu
     table.remove(world.mails, 1)
     Mock.Fire("MAIL_INBOX_UPDATE")
     Mock.Fire("MAIL_FAILED", 0)
-    eq(#TradingBookDB.ledger, 1)
+    eq(#TradingEssentialsDB.ledger, 1)
 end)
 
 test("a pending sale notice and ordinary mail are not recorded", function()
@@ -338,7 +338,7 @@ test("a pending sale notice and ordinary mail are not recorded", function()
     Mock.Fire("MAIL_SHOW")
     TakeInboxMoney(2)
     TakeInboxMoney(1)
-    eq(#TradingBookDB.ledger, 0)
+    eq(#TradingEssentialsDB.ledger, 0)
 end)
 
 test("an invoice is trusted even when the subject line is not recognised", function()
@@ -348,8 +348,8 @@ test("an invoice is trusted even when the subject line is not recognised", funct
     world.mails = { mail }
     Mock.Fire("MAIL_SHOW")
     TakeInboxMoney(1)
-    eq(kinds(TradingBookDB.ledger), "sold")
-    eq(TradingBookDB.ledger[1].cut, 5)
+    eq(kinds(TradingEssentialsDB.ledger), "sold")
+    eq(TradingEssentialsDB.ledger[1].cut, 5)
 end)
 
 test("an invoice needing the mail body is read at collection, not while scanning", function()
@@ -360,7 +360,7 @@ test("an invoice needing the mail body is read at collection, not while scanning
     eq(world.bodiesLoaded, 0, "scanning must not mark mail as read")
     TakeInboxMoney(1)
     eq(world.bodiesLoaded, 1)
-    eq(TradingBookDB.ledger[1].cut, 5)
+    eq(TradingEssentialsDB.ledger[1].cut, 5)
 end)
 
 test("without any invoice a sale falls back on the subject and the mail's money", function()
@@ -368,7 +368,7 @@ test("without any invoice a sale falls back on the subject and the mail's money"
     world.mails = { { subject = "Auction successful: Herb (20)", money = 950 } }
     Mock.Fire("MAIL_SHOW")
     TakeInboxMoney(1)
-    local entry = TradingBookDB.ledger[1]
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.name, "Herb")
     eq(entry.qty, 20)
     eq(entry.gross, 950)
@@ -392,8 +392,8 @@ test("subjects are recognised in French, including special characters", function
     TakeInboxItem(3, 1)
     TakeInboxItem(2, 1)
     TakeInboxMoney(1)
-    eq(kinds(TradingBookDB.ledger), "expired,bought,sold")
-    eq(TradingBookDB.ledger[3].qty, 5)
+    eq(kinds(TradingEssentialsDB.ledger), "expired,bought,sold")
+    eq(TradingEssentialsDB.ledger[3].qty, 5)
 end)
 
 test("a sale collected from mail ends the matching live auction", function()
@@ -497,7 +497,7 @@ test("other characters are summed, and filtered out on request", function()
     Mock.SetBagItem(0, 1, 1001, "Herb", 10)
     Mock.Fire("BAG_UPDATE_DELAYED")
     Mock.RunTimers()
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 777, stock = { bags = { [1001] = 5 }, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 777, stock = { bags = { [1001] = 5 }, bank = {}, mail = {} }, auctions = {} }
 
     eq(findRow(ns.Stockpile.GetRows(), 1001).total, 15, "account")
     eq(findRow(ns.Stockpile.GetRows("Primo-Hyjal"), 1001).total, 10, "filtered")
@@ -512,20 +512,20 @@ test("stock history keeps one point per day and only records changes", function(
     Mock.SetBagItem(0, 1, 1001, "Herb", 12)
     Mock.Fire("BAG_UPDATE_DELAYED")
     Mock.RunTimers()
-    eq(#TradingBookDB.stockHistory[1001], 1, "same day")
-    eq(TradingBookDB.stockHistory[1001][1].value, 12)
+    eq(#TradingEssentialsDB.stockHistory[1001], 1, "same day")
+    eq(TradingEssentialsDB.stockHistory[1001][1].value, 12)
 
     world.now = world.now + 86400
     Mock.Fire("BAG_UPDATE_DELAYED")
     Mock.RunTimers()
-    eq(#TradingBookDB.stockHistory[1001], 1, "unchanged next day")
+    eq(#TradingEssentialsDB.stockHistory[1001], 1, "unchanged next day")
 
     world.now = world.now + 86400
     world.bags[0][1] = nil
     Mock.Fire("BAG_UPDATE_DELAYED")
     Mock.RunTimers()
-    eq(#TradingBookDB.stockHistory[1001], 2, "gone")
-    eq(TradingBookDB.stockHistory[1001][2].value, 0, "recorded as zero")
+    eq(#TradingEssentialsDB.stockHistory[1001], 2, "gone")
+    eq(TradingEssentialsDB.stockHistory[1001][2].value, 0, "recorded as zero")
     eq(ns.Stockpile.GetChange(1001, 1), -12, "change")
 end)
 
@@ -550,7 +550,7 @@ test("gold sums characters and the warband bank", function()
     Mock.Fire("PLAYER_MONEY")
     Mock.Fire("BANKFRAME_OPENED")
     Mock.RunTimers()
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 250, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 250, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
     eq(ns.Stockpile.GetGold(), 1750, "account")
     eq(ns.Stockpile.GetGold("Primo-Hyjal"), 1000, "character")
 end)
@@ -572,7 +572,7 @@ local function goldSeries(ns, world, values)
 end
 
 local function setCharacterGold(ns, world, key, values, class)
-    TradingBookDB.characters[key] = {
+    TradingEssentialsDB.characters[key] = {
         class = class,
         money = values[#values][2],
         moneyHistory = goldSeries(ns, world, values),
@@ -582,9 +582,9 @@ local function setCharacterGold(ns, world, key, values, class)
 end
 
 local function setWarbandGold(ns, world, values)
-    TradingBookDB.warband.scannedAt = world.now
-    TradingBookDB.warband.money = values[#values][2]
-    TradingBookDB.warband.moneyHistory = goldSeries(ns, world, values)
+    TradingEssentialsDB.warband.scannedAt = world.now
+    TradingEssentialsDB.warband.money = values[#values][2]
+    TradingEssentialsDB.warband.moneyHistory = goldSeries(ns, world, values)
 end
 
 -- The player's own history, replacing what login recorded.
@@ -595,7 +595,7 @@ test("each holder records its own gold, one point a day at most", function()
     world.money = 1500
     Mock.Fire("PLAYER_MONEY")
     Mock.RunTimers()
-    local history = TradingBookDB.characters[PLAYER_KEY].moneyHistory
+    local history = TradingEssentialsDB.characters[PLAYER_KEY].moneyHistory
     eq(#history, 1, "same day")
     eq(history[1].value, 1500)
 
@@ -605,11 +605,11 @@ test("each holder records its own gold, one point a day at most", function()
     Mock.RunTimers()
     eq(#history, 2, "next day")
 
-    eq(TradingBookDB.warband.moneyHistory, nil, "warband not seen yet")
+    eq(TradingEssentialsDB.warband.moneyHistory, nil, "warband not seen yet")
     world.warbandMoney = 700
     Mock.Fire("BANKFRAME_OPENED")
     Mock.RunTimers()
-    eq(TradingBookDB.warband.moneyHistory[1].value, 700, "warband once seen")
+    eq(TradingEssentialsDB.warband.moneyHistory[1].value, 700, "warband once seen")
 end)
 
 test("gains on the very first day count, against the amount held at first sight", function()
@@ -723,7 +723,7 @@ end)
 
 test("an old alt without history still counts for its known gold", function()
     local ns, world = Mock.Boot({ money = 100 })
-    TradingBookDB.characters["Old-Hyjal"] = { money = 900, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Old-Hyjal"] = { money = 900, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
     local a = ns.Gold.Analyze({ days = 7 })
     eq(a.current, 1000)
     eq(a.change, 0)
@@ -795,7 +795,7 @@ end)
 
 test("saved data from the first version loses its old gold total without harm", function()
     local ns = Mock.Boot({ money = 100, db = { goldHistory = { { day = 20260101, value = 5 } } } })
-    eq(TradingBookDB.goldHistory, nil)
+    eq(TradingEssentialsDB.goldHistory, nil)
     eq(ns.Gold.Analyze({ days = 7 }).current, 100)
 end)
 
@@ -893,7 +893,7 @@ test("day buckets hold on every day of the year, including clock changes", funct
     local ns, world = Mock.Boot()
     for day = 1, 365 do
         world.now = os.time({ year = 2027, month = 1, day = day, hour = 12 })
-        TradingBookDB.ledger = {}
+        TradingEssentialsDB.ledger = {}
         ns.Ledger.Add({ kind = "sold", t = os.time({ year = 2027, month = 1, day = day - 1, hour = 23 }), gross = 100, qty = 1 })
         ns.Ledger.Add({ kind = "sold", t = os.time({ year = 2027, month = 1, day = day, hour = 1 }), gross = 200, qty = 1 })
         local bars = ns.Stats.BuildSeries({ since = ns.Stats.PeriodStart(3) }, 60)
@@ -915,7 +915,7 @@ end
 -- Scans are only made by hand: the auction house is opened, then a scan asked for.
 local function scanAuctionHouse()
     openAuctionHouse()
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
 end
 
 -- The server's answer to a scan, read to the end.
@@ -946,7 +946,7 @@ test("item value prefers Auctionator, then the auction house scan, then recent s
     eq(seenAt, world.now)
 
     rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function(caller, id)
-        eq(caller, "TradingBook")
+        eq(caller, "TradingEssentials")
         return id == 1001 and 555 or nil
     end } } })
     price, source = ns.Stats.GetUnitPrice(1001)
@@ -955,7 +955,7 @@ test("item value prefers Auctionator, then the auction house scan, then recent s
     eq(source, "auctionator")
 end)
 
-test("a broken Auctionator does not break Trading Book", function()
+test("a broken Auctionator does not break Trading Essentials", function()
     local ns = Mock.Boot()
     ns.Ledger.Add({ kind = "sold", itemID = 1001, qty = 1, gross = 100 })
     rawset(_G, "Auctionator", { API = { v1 = { GetAuctionPriceByItemID = function() error("boom") end } } })
@@ -979,8 +979,8 @@ test("the ledger drops its oldest entries past the cap", function()
         db.ledger[i] = { kind = "expired", t = i, qty = 1 }
     end
     Mock.Boot({ db = db })
-    eq(#TradingBookDB.ledger, 20000)
-    eq(TradingBookDB.ledger[1].t, 6)
+    eq(#TradingEssentialsDB.ledger, 20000)
+    eq(TradingEssentialsDB.ledger[1].t, 6)
 end)
 
 test("existing saved data survives a reload", function()
@@ -989,10 +989,10 @@ test("existing saved data survives a reload", function()
     Mock.Fire("BANKFRAME_OPENED")
     Mock.RunTimers()
     ns.Ledger.Add({ kind = "sold", itemID = 1001, qty = 1, gross = 100 })
-    local saved = TradingBookDB
+    local saved = TradingEssentialsDB
 
     local reloaded = Mock.Boot({ db = saved })
-    eq(#TradingBookDB.ledger, 1)
+    eq(#TradingEssentialsDB.ledger, 1)
     eq(findRow(reloaded.Stockpile.GetRows(), 1001).bank, 10)
 end)
 
@@ -1002,13 +1002,13 @@ test("purchases the first schema recorded at zero become unknown, once", functio
         { kind = "bought", t = 2, itemID = 1001, qty = 1, gross = 300 },
         { kind = "sold", t = 3, itemID = 1001, qty = 1, gross = 0 },
     } } })
-    eq(TradingBookDB.ledger[1].gross, nil, "zero was the missing invoice")
-    eq(TradingBookDB.ledger[2].gross, 300, "a known price stays")
-    eq(TradingBookDB.ledger[3].gross, 0, "only purchases")
-    eq(TradingBookDB.schema, 2)
+    eq(TradingEssentialsDB.ledger[1].gross, nil, "zero was the missing invoice")
+    eq(TradingEssentialsDB.ledger[2].gross, 300, "a known price stays")
+    eq(TradingEssentialsDB.ledger[3].gross, 0, "only purchases")
+    eq(TradingEssentialsDB.schema, 2)
 
     Mock.Boot()
-    eq(TradingBookDB.schema, 2, "a new account starts at the current schema")
+    eq(TradingEssentialsDB.schema, 2, "a new account starts at the current schema")
 end)
 
 -- Interface -----------------------------------------------------------------
@@ -1053,7 +1053,7 @@ test("the window opens on every tab, with and without data", function()
     ns.UI.Open("stock")
     ns.UI.Open("stats")
     ns.UI.Open("auctions")
-    eq(TradingBookMainFrame:IsShown(), true)
+    eq(TradingEssentialsMainFrame:IsShown(), true)
 
     seedLedger(ns, world)
     Mock.SetBagItem(0, 1, 1001, "Herb", 10)
@@ -1063,9 +1063,9 @@ test("the window opens on every tab, with and without data", function()
     ns.UI.Open("stats")
 
     ns.UI.Toggle()
-    eq(TradingBookMainFrame:IsShown(), false, "toggled off")
+    eq(TradingEssentialsMainFrame:IsShown(), false, "toggled off")
     ns.UI.Toggle()
-    eq(TradingBookMainFrame:IsShown(), true, "toggled on")
+    eq(TradingEssentialsMainFrame:IsShown(), true, "toggled on")
 end)
 
 test("the auctions tab lists history, filters it, and sorts by column", function()
@@ -1166,7 +1166,7 @@ local function firstWithin(template, ancestor)
 end
 
 local function selectCharacter(key)
-    local dropdown = firstWithin("WowStyle1DropdownTemplate", TradingBookMainFrame)
+    local dropdown = firstWithin("WowStyle1DropdownTemplate", TradingEssentialsMainFrame)
     for _, entry in ipairs(Mock.MenuEntries(dropdown)) do
         if entry.data == key then
             entry.setSelected(entry.data)
@@ -1178,11 +1178,11 @@ end
 
 test("the character menu lists the account, then this character, then the others", function()
     local ns = Mock.Boot()
-    TradingBookDB.characters["Zed-Hyjal"] = { money = 0, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 0, class = "WARRIOR", stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Zed-Hyjal"] = { money = 0, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 0, class = "WARRIOR", stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
     ns.UI.Open("auctions")
 
-    local entries = Mock.MenuEntries(firstWithin("WowStyle1DropdownTemplate", TradingBookMainFrame))
+    local entries = Mock.MenuEntries(firstWithin("WowStyle1DropdownTemplate", TradingEssentialsMainFrame))
     eq(#entries, 4)
     eq(entries[1].text, "Whole account")
     eq(entries[2].data, PLAYER_KEY, "this character first")
@@ -1204,7 +1204,7 @@ test("the character menu filters every tab, including other characters than this
     Mock.SetBagItem(0, 1, 1001, "Herb", 10)
     Mock.Fire("BAG_UPDATE_DELAYED")
     Mock.RunTimers()
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = { [1001] = 5 }, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = { [1001] = 5 }, bank = {}, mail = {} }, auctions = {} }
 
     ns.UI.Open("auctions")
     eq(#tables[1].rows, 6, "history, all characters")
@@ -1308,7 +1308,7 @@ end)
 
 test("the shared stock stays visible with a character selected", function()
     local _, list, select = stockFixture()
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = {}, bank = {}, mail = {} }, auctions = {} }
     selectCharacter("Alt-Hyjal")
     eq(rowIDs(list), "", "the alt holds nothing itself")
     select("warband")
@@ -1566,7 +1566,7 @@ test("tabs are only built when first shown", function()
     ns.UI.Toggle()
     ns.UI.Open("stock") -- Reopening a closed window on a tab never built yet.
     eq(#tables, 2)
-    eq(TradingBookMainFrame:IsShown(), true)
+    eq(TradingEssentialsMainFrame:IsShown(), true)
 end)
 
 test("the open tab refreshes when data changes, and a closed window does not", function()
@@ -1613,7 +1613,7 @@ end)
 test("items of offline characters still display from saved details", function()
     local ns = Mock.Boot()
     local tables = captureTables(ns)
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = { [4242] = 3 }, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = { [4242] = 3 }, bank = {}, mail = {} }, auctions = {} }
     ns.RememberItem(4242, "Rare Gem", 2, 999)
     ns.UI.Open("stock")
     eq(tables[1].rows[1].name, "Rare Gem")
@@ -1623,7 +1623,7 @@ end)
 test("items never seen by this client show a placeholder instead of an error", function()
     local ns = Mock.Boot()
     local tables = captureTables(ns)
-    TradingBookDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = { [4242] = 3 }, bank = {}, mail = {} }, auctions = {} }
+    TradingEssentialsDB.characters["Alt-Hyjal"] = { money = 0, stock = { bags = { [4242] = 3 }, bank = {}, mail = {} }, auctions = {} }
     ns.UI.Open("stock")
     eq(tables[1].ScrollBox.rendered[1].cells[1].text, "Unknown item")
 end)
@@ -1773,7 +1773,7 @@ for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
     layoutTest("layout: the " .. tab .. " tab keeps everything inside the window", function()
         local ns = layoutFixture()
         ns.UI.Open(tab)
-        local frame = TradingBookMainFrame
+        local frame = TradingEssentialsMainFrame
         local window = Mock.Rect(frame)
         for _, item in ipairs(visibleContent(frame)) do
             local rect = item.rect
@@ -1785,7 +1785,7 @@ for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
     layoutTest("layout: the " .. tab .. " tab keeps its content inside the margins", function()
         local ns = layoutFixture()
         ns.UI.Open(tab)
-        local frame = TradingBookMainFrame
+        local frame = TradingEssentialsMainFrame
         local inset = Mock.Rect(frame.Inset)
         local _, pane = activePane(frame)
         eq(pane.left - inset.left, ns.UI.PADDING, "left margin")
@@ -1805,7 +1805,7 @@ for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
     layoutTest("layout: the " .. tab .. " tab keeps a gap between its blocks", function()
         local ns = layoutFixture()
         ns.UI.Open(tab)
-        local children = directChildren(activePane(TradingBookMainFrame))
+        local children = directChildren(activePane(TradingEssentialsMainFrame))
         eq(#children >= 1, true, "has blocks")
         for i = 1, #children do
             for j = i + 1, #children do
@@ -1824,7 +1824,7 @@ for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
     layoutTest("layout: the " .. tab .. " tab's controls fit without touching", function()
         local ns = layoutFixture()
         ns.UI.Open(tab)
-        local frame = TradingBookMainFrame
+        local frame = TradingEssentialsMainFrame
         local inset = Mock.Rect(frame.Inset)
         local window = Mock.Rect(frame)
         local controls = {}
@@ -1852,7 +1852,7 @@ for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
     layoutTest("layout: the " .. tab .. " tab's text fits, except item names that may truncate", function()
         local ns = layoutFixture()
         ns.UI.Open(tab)
-        for _, item in ipairs(visibleContent(TradingBookMainFrame)) do
+        for _, item in ipairs(visibleContent(TradingEssentialsMainFrame)) do
             local object = item.object
             if object.kind == "text" and object.text ~= "" and not (object.font == "GameFontHighlight") then
                 local available = item.rect.right - item.rect.left
@@ -1890,8 +1890,8 @@ layoutTest("layout: nothing spills out of the card or row that holds it", functi
     local ns = layoutFixture()
     for _, tab in ipairs({ "auctions", "stock", "stats", "gold" }) do
         ns.UI.Open(tab)
-        local _, pane = activePane(TradingBookMainFrame)
-        for _, item in ipairs(visibleContent(activePane(TradingBookMainFrame))) do
+        local _, pane = activePane(TradingEssentialsMainFrame)
+        for _, item in ipairs(visibleContent(activePane(TradingEssentialsMainFrame))) do
             local object = item.object
             local parent = rawget(object, "parent")
             local holder = Mock.Rect(parent)
@@ -1909,7 +1909,7 @@ end)
 layoutTest("layout: the highlights fit their card, with the longest amounts", function()
     local ns = layoutFixture()
     ns.UI.Open("gold")
-    for _, item in ipairs(visibleContent(TradingBookMainFrame)) do
+    for _, item in ipairs(visibleContent(TradingEssentialsMainFrame)) do
         local object = item.object
         if object.kind == "text" and object.font == "GameFontHighlightSmall" then
             local parent = rawget(object, "parent")
@@ -1941,7 +1941,7 @@ layoutTest("layout: tiles do not cut their value, label or note", function()
     local ns, world = layoutFixture()
     for _, tab in ipairs({ "stats", "gold", "stock" }) do
         ns.UI.Open(tab)
-        for _, item in ipairs(visibleContent(TradingBookMainFrame)) do
+        for _, item in ipairs(visibleContent(TradingEssentialsMainFrame)) do
             local object = item.object
             if object.kind == "text" and object.font == "GameFontHighlightLarge" then
                 local parent = Mock.Rect(rawget(object, "parent"))
@@ -1995,7 +1995,7 @@ end
 
 test("the minimap icon appears at login, on the edge of the minimap", function()
     Mock.Boot()
-    local button = TradingBookMinimapButton
+    local button = TradingEssentialsMinimapButton
     eq(button:IsShown(), true)
     eq(button.parent, Minimap, "child of the minimap")
     eq(button.lastPoint.relativeTo, Minimap, "anchored to the minimap")
@@ -2005,16 +2005,16 @@ end)
 
 test("clicking the minimap icon opens and closes the window", function()
     Mock.Boot()
-    local button = TradingBookMinimapButton
+    local button = TradingEssentialsMinimapButton
     button.scripts.OnClick(button, "LeftButton")
-    eq(TradingBookMainFrame:IsShown(), true, "opened")
+    eq(TradingEssentialsMainFrame:IsShown(), true, "opened")
     button.scripts.OnClick(button, "LeftButton")
-    eq(TradingBookMainFrame:IsShown(), false, "closed")
+    eq(TradingEssentialsMainFrame:IsShown(), false, "closed")
 end)
 
 test("dragging the icon follows the cursor around the edge, in any direction", function()
     local _, world = Mock.Boot()
-    local button = TradingBookMinimapButton
+    local button = TradingEssentialsMinimapButton
     local cases = {
         { x = 300, y = 100, expectX = 75, expectY = 0 }, -- Right, far beyond the edge.
         { x = 100, y = 130, expectX = 0, expectY = 75 }, -- Above, inside the map.
@@ -2025,34 +2025,34 @@ test("dragging the icon follows the cursor around the edge, in any direction", f
         dragTo(button, world, case.x, case.y)
         near(button.lastPoint.x, case.expectX, 0.01, "x")
         near(button.lastPoint.y, case.expectY, 0.01, "y")
-        local angle = TradingBookDB.ui.minimap.angle
+        local angle = TradingEssentialsDB.ui.minimap.angle
         eq(angle >= 0 and angle < 360, true, "angle in range: " .. angle)
     end
 end)
 
 test("the icon stops following the cursor once dropped", function()
     local _, world = Mock.Boot()
-    local button = TradingBookMinimapButton
+    local button = TradingEssentialsMinimapButton
     dragTo(button, world, 300, 100)
     eq(button.scripts.OnUpdate, nil)
 end)
 
 test("the icon keeps its position across a reload", function()
     local _, world = Mock.Boot()
-    dragTo(TradingBookMinimapButton, world, 300, 100)
-    local saved = TradingBookDB
+    dragTo(TradingEssentialsMinimapButton, world, 300, 100)
+    local saved = TradingEssentialsDB
 
     Mock.Boot({ db = saved })
-    near(TradingBookMinimapButton.lastPoint.x, 75, 0.01, "x")
-    near(TradingBookMinimapButton.lastPoint.y, 0, 0.01, "y")
+    near(TradingEssentialsMinimapButton.lastPoint.x, 75, 0.01, "x")
+    near(TradingEssentialsMinimapButton.lastPoint.y, 0, 0.01, "y")
 end)
 
 test("the icon's tooltip explains it, but stays out of the way while dragging", function()
     Mock.Boot()
-    local button = TradingBookMinimapButton
+    local button = TradingEssentialsMinimapButton
     button.scripts.OnEnter(button)
     eq(#GameTooltip.lines, 4, "hints")
-    eq(GameTooltip.text, "Trading Book")
+    eq(GameTooltip.text, "Trading Essentials")
 
     button.scripts.OnDragStart(button)
     eq(GameTooltip:IsShown(), false, "hidden on drag")
@@ -2063,30 +2063,30 @@ test("the icon's tooltip explains it, but stays out of the way while dragging", 
     eq(GameTooltip:IsShown(), true, "back after the drag")
 end)
 
-test("/tradingbook minimap hides the icon for good, and brings it back", function()
+test("/tradingessentials minimap hides the icon for good, and brings it back", function()
     local _, world = Mock.Boot()
-    SlashCmdList.TRADINGBOOK("minimap")
-    eq(TradingBookMinimapButton:IsShown(), false, "hidden")
+    SlashCmdList.TRADINGESSENTIALS("minimap")
+    eq(TradingEssentialsMinimapButton:IsShown(), false, "hidden")
     eq(#world.printed, 1, "says how to bring it back")
 
-    local saved = TradingBookDB
+    local saved = TradingEssentialsDB
     Mock.Boot({ db = saved })
-    eq(TradingBookMinimapButton:IsShown(), false, "still hidden after a reload")
+    eq(TradingEssentialsMinimapButton:IsShown(), false, "still hidden after a reload")
 
-    SlashCmdList.TRADINGBOOK("MINIMAP")
-    eq(TradingBookMinimapButton:IsShown(), true, "shown again")
+    SlashCmdList.TRADINGESSENTIALS("MINIMAP")
+    eq(TradingEssentialsMinimapButton:IsShown(), true, "shown again")
 end)
 
 test("saved data from before the minimap icon gets it at the default position", function()
     Mock.Boot({ db = { ui = { position = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 0 } } } })
-    eq(TradingBookMinimapButton:IsShown(), true)
-    eq(TradingBookDB.ui.minimap.angle, 225)
-    eq(TradingBookDB.ui.position.point, "CENTER", "other settings untouched")
+    eq(TradingEssentialsMinimapButton:IsShown(), true)
+    eq(TradingEssentialsDB.ui.minimap.angle, 225)
+    eq(TradingEssentialsDB.ui.position.point, "CENTER", "other settings untouched")
 end)
 
 -- Item tooltips ----------------------------------------------------------------
 
--- The lines Trading Book adds when an item is hovered somewhere in the game.
+-- The lines Trading Essentials adds when an item is hovered somewhere in the game.
 local function hoverItem(itemID)
     GameTooltip.lines = {}
     GameTooltip:SetOwner(UIParent, "ANCHOR_RIGHT")
@@ -2106,7 +2106,7 @@ test("looking one item up gives the same row as the whole stock", function()
     Mock.SetBagItem(0, 2, 1002, "Ore", 3)
     Mock.Fire("BANKFRAME_OPENED")
     Mock.RunTimers()
-    TradingBookDB.characters["Alt-Hyjal"] = {
+    TradingEssentialsDB.characters["Alt-Hyjal"] = {
         money = 0, stock = { bags = { [1001] = 1 }, bank = {}, mail = { [1001] = 5 } },
         auctions = {
             { auctionID = 1, itemID = 1001, qty = 3, expiresAt = world.now + 3600 },
@@ -2131,7 +2131,7 @@ test("an item's tooltip shows the account's stock, by character and place", func
     Mock.SetBagItem(12, 1, 1001, "Herb", 40)
     Mock.Fire("BANKFRAME_OPENED")
     Mock.RunTimers()
-    TradingBookDB.characters["Alt-Hyjal"] = {
+    TradingEssentialsDB.characters["Alt-Hyjal"] = {
         money = 0, class = "WARRIOR", stock = { bags = {}, bank = {}, mail = { [1001] = 5 } },
         auctions = { { auctionID = 7, itemID = 1001, qty = 3, expiresAt = world.now + 3600 } },
     }
@@ -2200,16 +2200,16 @@ test("chat links get the lines, comparison tooltips do not", function()
     eq(#comparison.lines, 0, "comparison tooltip")
 end)
 
-test("/tradingbook tooltip hides the lines for good, and brings them back", function()
+test("/tradingessentials tooltip hides the lines for good, and brings them back", function()
     local ns, world = Mock.Boot()
     ns.Ledger.Add({ kind = "sold", itemID = 1001, name = "Herb", qty = 1, gross = 100 })
-    SlashCmdList.TRADINGBOOK("tooltip")
+    SlashCmdList.TRADINGESSENTIALS("tooltip")
     eq(hoverItem(1001), "", "hidden")
     eq(#world.printed, 1, "says how to bring them back")
 
-    world = select(2, Mock.Boot({ db = TradingBookDB }))
+    world = select(2, Mock.Boot({ db = TradingEssentialsDB }))
     eq(hoverItem(1001), "", "still hidden after a reload")
-    SlashCmdList.TRADINGBOOK("TOOLTIP")
+    SlashCmdList.TRADINGESSENTIALS("TOOLTIP")
     eq(has(hoverItem(1001), "Last sale"), true, "shown again")
     eq(#world.printed, 1, "says so")
 end)
@@ -2220,7 +2220,7 @@ test("opening the auction house never scans it, and a scan by hand keeps the low
     local ns, world = Mock.Boot()
     openAuctionHouse()
     eq(world.replicateRequests, 0, "only by hand")
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     eq(world.replicateRequests, 1)
     answerScan({
         auction(1001, 10, 1000), auction(1001, 5, 400), auction(1001, 1, 150),
@@ -2260,12 +2260,12 @@ test("scans keep the game's 15 minutes apart, and a scan by hand says when it ca
     scanAuctionHouse()
     answerScan({ auction(1001, 1, 100) })
     world.now = world.now + 10 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     eq(world.replicateRequests, 1, "too soon")
     eq(has(world.printed[#world.printed], "scanned again in 5 min"), true, world.printed[#world.printed])
 
     world.now = world.now + 5 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     eq(world.replicateRequests, 2, "allowed again")
     eq(has(world.printed[#world.printed], "Scanning the auction house..."), true)
 end)
@@ -2305,7 +2305,7 @@ test("an error while reading a scan drops it, keeps the previous prices and free
     scanAuctionHouse()
     answerScan({ auction(1001, 1, 100) })
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     Mock.SetReplicate({ auction(1001, 1, 50), auction(1002, "broken", 10) })
     local ok, err = pcall(Mock.Fire, "REPLICATE_ITEM_LIST_UPDATE")
     eq(ok, false, "the error still reaches the game")
@@ -2317,14 +2317,14 @@ end)
 
 test("a scan by hand needs the auction house open", function()
     local _, world = Mock.Boot()
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     eq(world.replicateRequests, 0)
     eq(has(world.printed[1], "Open the auction house to scan it."), true, world.printed[1])
 end)
 
 test("the setting of the old automatic scan is forgotten", function()
     Mock.Boot({ db = { ui = { noAutoScan = true } } })
-    eq(TradingBookDB.ui.noAutoScan, nil)
+    eq(TradingEssentialsDB.ui.noAutoScan, nil)
 end)
 
 test("closing the auction house drops a scan in progress and keeps the previous prices", function()
@@ -2333,7 +2333,7 @@ test("closing the auction house drops a scan in progress and keeps the previous 
     answerScan({ auction(1001, 1, 100) })
     local firstScan = world.now
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     local auctions = {}
     for i = 1, 5000 do
         auctions[i] = auction(1001, 1, 50)
@@ -2347,7 +2347,7 @@ test("closing the auction house drops a scan in progress and keeps the previous 
     eq(has(world.printed[#world.printed], "scan stopped"), true, world.printed[#world.printed])
 end)
 
-test("a scan's answer is only read when Trading Book asked for it", function()
+test("a scan's answer is only read when Trading Essentials asked for it", function()
     local ns = Mock.Boot()
     answerScan({ auction(1001, 1, 90) })
     eq(ns.Market.GetItem(1001), nil, "the auction house is closed")
@@ -2362,7 +2362,7 @@ test("a request the server never answers does not block the next one", function(
     scanAuctionHouse()
     eq(world.replicateRequests, 1)
     world.now = world.now + 16 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     eq(world.replicateRequests, 2)
 end)
 
@@ -2372,7 +2372,7 @@ test("items gone from the auction house keep their last price for a month, with 
     answerScan({ auction(1001, 3, 300), auction(1002, 1, 70) })
     local firstScan = world.now
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(1002, 2, 120) })
     local gone = ns.Market.GetItem(1001)
     eq(gone.price, 100, "last price kept")
@@ -2381,7 +2381,7 @@ test("items gone from the auction house keep their last price for a month, with 
     eq(ns.Market.GetItem(1002).price, 60, "replaced by the new scan")
 
     world.now = world.now + 31 * 86400
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(1002, 1, 80) })
     eq(ns.Market.GetItem(1001), nil, "dropped after 30 days")
     eq(ns.Market.GetItem(1002).price, 80)
@@ -2396,7 +2396,7 @@ test("the account's items keep a price a day, for the change since a week ago", 
     eq(ns.Market.GetChange(1001), nil, "no price a week old yet")
     for day = 1, 8 do
         world.now = firstDay + day * 86400
-        SlashCmdList.TRADINGBOOK("scan")
+        SlashCmdList.TRADINGESSENTIALS("scan")
         answerScan({ auction(1001, 1, 100 + day * 5), auction(1002, 1, 200) })
     end
     local change, since = ns.Market.GetChange(1001)
@@ -2405,15 +2405,15 @@ test("the account's items keep a price a day, for the change since a week ago", 
     eq(ns.Market.GetChange(1002), nil, "items the account never dealt in keep no history")
 
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(1002, 1, 200) })
     eq(ns.Market.GetChange(1001), nil, "not on sale any more")
 
     world.now = firstDay + 40 * 86400
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(1001, 1, 100) })
     local days = 0
-    for _ in pairs(TradingBookDB.market.realms.Hyjal.history[1001]) do
+    for _ in pairs(TradingEssentialsDB.market.realms.Hyjal.history[1001]) do
         days = days + 1
     end
     eq(days, 1, "only the last 30 days are kept")
@@ -2423,9 +2423,9 @@ test("connected realms share their prices", function()
     Mock.Boot({ connectedRealms = { "Elune" } })
     scanAuctionHouse()
     answerScan({ auction(1001, 1, 100) })
-    local ns = Mock.Boot({ db = TradingBookDB, realm = "Elune", connectedRealms = { "Hyjal" } })
+    local ns = Mock.Boot({ db = TradingEssentialsDB, realm = "Elune", connectedRealms = { "Hyjal" } })
     eq(ns.Market.GetItem(1001) and ns.Market.GetItem(1001).price, 100, "another realm of the group")
-    ns = Mock.Boot({ db = TradingBookDB, realm = "Ysondre" })
+    ns = Mock.Boot({ db = TradingEssentialsDB, realm = "Ysondre" })
     eq(ns.Market.GetItem(1001), nil, "a realm outside the group")
 end)
 
@@ -2435,7 +2435,7 @@ test("without Auctionator, item tooltips give the auction house price, its age a
     scanAuctionHouse()
     answerScan({ auction(4242, 4, 1000), auction(4242, 2, 600) })
     world.now = world.now + 8 * 86400
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(4242, 1, 300) })
     world.now = world.now + 2 * 3600
     local text = hoverItem(4242)
@@ -2527,7 +2527,7 @@ test("the account's auctions do not undercut each other, on its own auction hous
     eq(next(ns.Auctions.GetUndercut()), nil, "the cheapest offer is the account's own")
 
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(1001, 1, 85), auction(1001, 1, 90), auction(1001, 1, 100) })
     local undercut = ns.Auctions.GetUndercut()
     eq(undercut[mine], 85, "a stranger sells for less")
@@ -2545,7 +2545,7 @@ test("items no longer on sale, or never scanned, are not undercut", function()
     eq(ns.Auctions.GetUndercut()[gone], 50)
 
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     answerScan({ auction(1002, 1, 50) })
     local undercut = ns.Auctions.GetUndercut()
     eq(undercut[gone], nil, "no longer on sale")
@@ -2632,7 +2632,7 @@ test("the mail summary can be turned off in the settings", function()
     Mock.CompleteTake()
     Mock.Fire("MAIL_CLOSED")
     eq(#world.printed, 0)
-    eq(#TradingBookDB.ledger, 1, "the sale is still recorded")
+    eq(#TradingEssentialsDB.ledger, 1, "the sale is still recorded")
 end)
 
 -- Watch list ----------------------------------------------------------------------
@@ -2660,21 +2660,21 @@ end)
 test("an item is watched by link or by name, with a target to buy, to sell, or both", function()
     local ns, world = Mock.Boot()
     ns.RememberItem(1001, "Herb", 1, 1)
-    SlashCmdList.TRADINGBOOK("watch " .. HERB_LINK .. " 12g50s")
+    SlashCmdList.TRADINGESSENTIALS("watch " .. HERB_LINK .. " 12g50s")
     eq(ns.Watch.Get(1001).below, 125000, "buying is the default")
     eq(ns.Watch.Get(1001).link, HERB_LINK)
     eq(has(lastPrinted(world), "Watching " .. HERB_LINK .. ": buy at 125000c or less."), true, lastPrinted(world))
 
-    SlashCmdList.TRADINGBOOK("watch Herb ABOVE 20")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb ABOVE 20")
     eq(ns.Watch.Get(1001).above, 200000)
     eq(ns.Watch.Get(1001).below, 125000, "the other target stays")
 
     local newStyle = "|cnIQ3:|Hitem:1002::::|h[Iron Ore Bundle]|h|r"
-    SlashCmdList.TRADINGBOOK("watch " .. newStyle .. " below 1.5")
+    SlashCmdList.TRADINGESSENTIALS("watch " .. newStyle .. " below 1.5")
     eq(ns.Watch.Get(1002).below, 15000, "a link with spaces and the new colour codes")
 
     local printed = #world.printed
-    SlashCmdList.TRADINGBOOK("watch")
+    SlashCmdList.TRADINGESSENTIALS("watch")
     eq(world.printed[printed + 1]:find("Watched items:", 1, true) ~= nil, true)
     local lines = table.concat(world.printed, "\n", printed + 2)
     eq(has(lines, HERB_LINK .. ": buy at 125000c or less, sell at 200000c or more, no price yet"), true, lines)
@@ -2684,27 +2684,27 @@ end)
 test("watch commands explain what they cannot read", function()
     local ns, world = Mock.Boot()
     ns.RememberItem(1001, "Herb", 1, 1)
-    SlashCmdList.TRADINGBOOK("watch")
+    SlashCmdList.TRADINGESSENTIALS("watch")
     eq(has(lastPrinted(world), "No item is watched."), true, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("watch Nothing Known 12g")
+    SlashCmdList.TRADINGESSENTIALS("watch Nothing Known 12g")
     eq(has(lastPrinted(world), "Unknown item."), true, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("watch Herb twelve")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb twelve")
     eq(has(lastPrinted(world), "Unknown price."), true, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("watch " .. HERB_LINK)
+    SlashCmdList.TRADINGESSENTIALS("watch " .. HERB_LINK)
     eq(has(lastPrinted(world), "Unknown price."), true, "a link without a price")
-    eq(next(TradingBookDB.watch), nil, "nothing watched")
+    eq(next(TradingEssentialsDB.watch), nil, "nothing watched")
 end)
 
 test("unwatch stops watching an item", function()
     local ns, world = Mock.Boot()
     ns.RememberItem(1001, "Herb", 1, 1)
-    SlashCmdList.TRADINGBOOK("watch Herb 1g")
-    SlashCmdList.TRADINGBOOK("unwatch " .. HERB_LINK)
+    SlashCmdList.TRADINGESSENTIALS("watch Herb 1g")
+    SlashCmdList.TRADINGESSENTIALS("unwatch " .. HERB_LINK)
     eq(ns.Watch.Get(1001), nil)
     eq(has(lastPrinted(world), "Herb is no longer watched."), true, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("unwatch Herb")
+    SlashCmdList.TRADINGESSENTIALS("unwatch Herb")
     eq(has(lastPrinted(world), "Herb is not watched."), true, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("unwatch Nothing")
+    SlashCmdList.TRADINGESSENTIALS("unwatch Nothing")
     eq(has(lastPrinted(world), "Unknown item."), true, lastPrinted(world))
 end)
 
@@ -2714,10 +2714,10 @@ test("each scan says which watched items reach their target", function()
     ns.RememberItem(1002, "Ore", 1, 1)
     ns.RememberItem(1003, "Gem", 1, 1)
     ns.RememberItem(1004, "Silk", 1, 1)
-    SlashCmdList.TRADINGBOOK("watch Herb 100c")
-    SlashCmdList.TRADINGBOOK("watch Ore above 1g")
-    SlashCmdList.TRADINGBOOK("watch Gem 10c")
-    SlashCmdList.TRADINGBOOK("watch Silk 1g")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb 100c")
+    SlashCmdList.TRADINGESSENTIALS("watch Ore above 1g")
+    SlashCmdList.TRADINGESSENTIALS("watch Gem 10c")
+    SlashCmdList.TRADINGESSENTIALS("watch Silk 1g")
     local printed = #world.printed
     scanAuctionHouse()
     answerScan({ auction(1001, 1, 90), auction(1002, 1, 15000), auction(1003, 1, 50) })
@@ -2728,7 +2728,7 @@ test("each scan says which watched items reach their target", function()
     eq(has(said, "Watched Silk"), false, "never on sale")
 
     world.now = world.now + 20 * 60
-    SlashCmdList.TRADINGBOOK("scan")
+    SlashCmdList.TRADINGESSENTIALS("scan")
     printed = #world.printed
     answerScan({ auction(1002, 1, 15000) })
     said = table.concat(world.printed, "\n", printed + 1)
@@ -2739,8 +2739,8 @@ end)
 test("item tooltips show the targets of a watched item, even one neither held nor sold", function()
     local ns = Mock.Boot()
     ns.RememberItem(4242, "Gem", 1, 1)
-    SlashCmdList.TRADINGBOOK("watch Gem 2g")
-    SlashCmdList.TRADINGBOOK("watch Gem above 5g")
+    SlashCmdList.TRADINGESSENTIALS("watch Gem 2g")
+    SlashCmdList.TRADINGESSENTIALS("watch Gem above 5g")
     local text = hoverItem(4242)
     eq(has(text, "Buy target=20000c"), true, text)
     eq(has(text, "Sell target=50000c"), true, text)
@@ -2749,13 +2749,13 @@ end)
 test("a price can be split by spaces, as players often write it", function()
     local ns, world = Mock.Boot()
     ns.RememberItem(1001, "Herb", 1, 1)
-    SlashCmdList.TRADINGBOOK("watch Herb 12g 50s")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb 12g 50s")
     eq(ns.Watch.Get(1001) and ns.Watch.Get(1001).below, 125000, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("watch " .. HERB_LINK .. " above 1g 5s 25c")
+    SlashCmdList.TRADINGESSENTIALS("watch " .. HERB_LINK .. " above 1g 5s 25c")
     eq(ns.Watch.Get(1001).above, 10525, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("watch Herb below 2g50s 10c")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb below 2g50s 10c")
     eq(ns.Watch.Get(1001).below, 25010, lastPrinted(world))
-    SlashCmdList.TRADINGBOOK("watch Herb 3 50s")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb 3 50s")
     eq(has(lastPrinted(world), "Unknown item."), true, "a bare number is not a coin: " .. lastPrinted(world))
     eq(ns.Watch.Get(1001).below, 25010, "unchanged")
 end)
@@ -2768,7 +2768,7 @@ local function fakeAuctionator(prices, ages)
         GetAuctionPriceByItemID = function(_, itemID) return prices[itemID] end,
         GetAuctionAgeByItemID = function(_, itemID) return ages[itemID] end,
         RegisterForDBUpdate = function(caller, callback)
-            eq(caller, "TradingBook")
+            eq(caller, "TradingEssentials")
             table.insert(listeners, callback)
         end,
     } } }
@@ -2820,7 +2820,7 @@ test("with Auctionator, its prices check undercuts and watched items, saying onl
     ns.RememberItem(1001, "Herb", 1, 1)
     local mine = liveAuction(world, 1, 1001, 100)
     setAuctions(ns, nil, { mine })
-    SlashCmdList.TRADINGBOOK("watch Herb 1g")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb 1g")
     openAuctionHouse()
     eq(world.replicateRequests, 0, "opening never scans")
 
@@ -2863,7 +2863,7 @@ end)
 -- Export ----------------------------------------------------------------------------
 
 local function exportBox()
-    return firstWithin("ScrollFrameTemplate", TradingBookExportFrame).scrollChild
+    return firstWithin("ScrollFrameTemplate", TradingEssentialsExportFrame).scrollChild
 end
 
 test("the export gives the history as CSV, oldest first, with amounts in copper", function()
@@ -2872,8 +2872,8 @@ test("the export gives the history as CSV, oldest first, with amounts in copper"
         gross = 1000, cut = 50, deposit = 10, other = "Bob" })
     ns.Ledger.Add({ kind = "post", t = world.now - 7200, itemID = 1002, name = 'Ore "raw"', qty = 2,
         unit = 333, deposit = 20 })
-    SlashCmdList.TRADINGBOOK("export")
-    eq(TradingBookExportFrame:IsShown(), true)
+    SlashCmdList.TRADINGESSENTIALS("export")
+    eq(TradingEssentialsExportFrame:IsShown(), true)
     local box = exportBox()
     eq(box:GetText(), table.concat({
         "date,type,item,item_id,quantity,unit_price,amount,character,other",
@@ -2886,7 +2886,7 @@ end)
 
 test("the export box cannot be edited, closes on Escape, and is fresh when reopened", function()
     local ns, world = Mock.Boot()
-    SlashCmdList.TRADINGBOOK("export")
+    SlashCmdList.TRADINGESSENTIALS("export")
     local box = exportBox()
     local csv = box:GetText()
     eq(csv, "date,type,item,item_id,quantity,unit_price,amount,character,other", "only the header")
@@ -2894,10 +2894,10 @@ test("the export box cannot be edited, closes on Escape, and is fresh when reope
     box.scripts.OnTextChanged(box, true)
     eq(box:GetText(), csv, "typing puts the text back")
     box.scripts.OnEscapePressed(box)
-    eq(TradingBookExportFrame:IsShown(), false)
+    eq(TradingEssentialsExportFrame:IsShown(), false)
 
     ns.Ledger.Add({ kind = "expired", itemID = 1001, name = "Herb", qty = 3 })
-    SlashCmdList.TRADINGBOOK("export")
+    SlashCmdList.TRADINGESSENTIALS("export")
     eq(exportBox(), box, "the same window")
     eq(has(box:GetText(), "expired,Herb,1001,3,,0,Primo-Hyjal,"), true, box:GetText())
 end)
@@ -2910,17 +2910,17 @@ test("the export leaves the amounts of a purchase with an unknown price empty", 
     } }
     Mock.Fire("MAIL_SHOW")
     AutoLootMailItem(1)
-    SlashCmdList.TRADINGBOOK("export")
+    SlashCmdList.TRADINGESSENTIALS("export")
     local csv = exportBox():GetText()
     eq(has(csv, "\n2026-11-05 12:00,bought,Herb,1001,20,,,Primo-Hyjal,"), true, csv)
 end)
 
 layoutTest("the export hint fits on one line beside the portrait", function()
     Mock.Boot({ locale = layoutLocale })
-    SlashCmdList.TRADINGBOOK("export")
+    SlashCmdList.TRADINGESSENTIALS("export")
     local hint
     for _, object in ipairs(Mock.Objects()) do
-        if object.kind == "text" and rawget(object, "parent") == TradingBookExportFrame then
+        if object.kind == "text" and rawget(object, "parent") == TradingEssentialsExportFrame then
             hint = object
         end
     end
@@ -2991,7 +2991,7 @@ layoutTest("layout: the count of unpriced purchases stays clear of its tile's la
     end
     ns.UI.Open("stats")
     local tiles = {}
-    for _, item in ipairs(visibleContent(TradingBookMainFrame)) do
+    for _, item in ipairs(visibleContent(TradingEssentialsMainFrame)) do
         local object = item.object
         if object.kind == "text" then
             local parent = rawget(object, "parent")
@@ -3044,12 +3044,12 @@ test("an order keeps the known keys, drops the others, and gives new ones their 
     eq(orderText(ns, "tooltip"), "stock,market,watch,sales,profit")
     eq(orderText(ns, "tiles"), "net,profit,sales,spent,fees,sellThrough,stockValue,goldChange")
 
-    TradingBookDB.ui.order = { tabs = { "gold", "gone", "stats", "gold" } }
+    TradingEssentialsDB.ui.order = { tabs = { "gold", "gone", "stats", "gold" } }
     eq(orderText(ns, "tabs"), "auctions,stock,gold,stats")
 
     eq(ns.UI.MoveInOrder("tabs", "stats", -1), true)
     eq(orderText(ns, "tabs"), "auctions,stock,stats,gold")
-    eq(TradingBookDB.ui.order, nil, "the default order saves nothing")
+    eq(TradingEssentialsDB.ui.order, nil, "the default order saves nothing")
     eq(ns.UI.MoveInOrder("tabs", "auctions", -1), false, "already first")
     eq(ns.UI.MoveInOrder("tabs", "gold", 1), false, "already last")
     eq(ns.UI.MoveInOrder("tabs", "unknown", 1), false)
@@ -3095,7 +3095,7 @@ test("the settings page ends with the order of the tabs, tooltip blocks and Stat
     reset.scripts.OnClick(reset)
     eq(tabs[1].Label:GetText(), "Auctions")
     eq(reset.enabled, false, "nothing left to reset")
-    eq(TradingBookDB.ui.order, nil)
+    eq(TradingEssentialsDB.ui.order, nil)
 
     lists["Stats tiles"][3].Up.scripts.OnClick(lists["Stats tiles"][3].Up)
     Mock.SettingsPage().frame:OnDefault() -- The options panel resetting everything.
@@ -3107,8 +3107,8 @@ test("the window's tabs follow the order, and the first one opens first", functi
     local ns = Mock.Boot()
     ns.UI.MoveInOrder("tabs", "stats", -1)
     ns.UI.MoveInOrder("tabs", "stats", -1)
-    SlashCmdList.TRADINGBOOK("")
-    local frame = TradingBookMainFrame
+    SlashCmdList.TRADINGESSENTIALS("")
+    local frame = TradingEssentialsMainFrame
     eq(frame.Tabs[1]:GetText(), "Stats")
     eq(frame.Tabs[2]:GetText(), "Auctions")
     eq(frame.selectedTab, 1, "the first tab opens first")
@@ -3121,7 +3121,7 @@ test("the window's tabs follow the order, and the first one opens first", functi
     eq(frame.selectedTab, 1, "the selected tab stays selected at its new rank")
     eq(Mock.Rect(frame.Tabs[1]).right < Mock.Rect(frame.Tabs[2]).left, true)
 
-    SlashCmdList.TRADINGBOOK("gold")
+    SlashCmdList.TRADINGESSENTIALS("gold")
     eq(frame.selectedTab, 4, "commands open a tab by name, wherever it stands")
 end)
 
@@ -3185,7 +3185,7 @@ end)
 
 -- Auction house tab -------------------------------------------------------------------
 
--- The panel the Trading Book tab shows in the auction house window.
+-- The panel the Trading Essentials tab shows in the auction house window.
 local function auctionHousePanel(ah)
     for _, object in ipairs(Mock.Objects()) do
         if rawget(object, "parent") == ah and object.scripts.OnUpdate then
@@ -3272,7 +3272,7 @@ local function auctionHouseStatus(panel)
     return lastScan:GetText(), state:GetText(), frameWithin("UIPanelButtonTemplate", panel)
 end
 
-test("the Trading Book tab comes after the game's and takes turns with them, leaving their list alone", function()
+test("the Trading Essentials tab comes after the game's and takes turns with them, leaving their list alone", function()
     Mock.Boot()
     local ah = Mock.LoadAuctionHouseUI()
     ah.SetTitle = function(_, title)
@@ -3280,8 +3280,8 @@ test("the Trading Book tab comes after the game's and takes turns with them, lea
     end
     eq(#ah.Tabs, 3, "the game's tabs on their own: changing the list taints the bags")
     eq(ah.numTabs, 3)
-    local tab = TradingBookAuctionHouseTab
-    eq(tab:GetText(), "Trading Book")
+    local tab = TradingEssentialsAuctionHouseTab
+    eq(tab:GetText(), "Trading Essentials")
     near(Mock.Rect(tab).left, Mock.Rect(ah.Tabs[3]).right + 3, 0.01, "after the last tab")
     eq(tab.selected, false)
 
@@ -3298,7 +3298,7 @@ test("the Trading Book tab comes after the game's and takes turns with them, lea
     eq(panel:IsShown(), true)
     eq(tab.selected, true)
     eq(ah.Tabs[1].selected, false, "the game's tab is no longer marked")
-    eq(ah.title, "Trading Book")
+    eq(ah.title, "Trading Essentials")
     eq(ah.displayMode, nil, "so that the game's next mode counts as a change")
     eq(panelTemplateCalls, 0, "the game's selected tab is not written from here")
     near(Mock.Rect(panel).top, Mock.Rect(ah).top - 26, 0.01, "below the title bar")
@@ -3325,9 +3325,9 @@ test("with LibAHTab, as Auctionator brings it, the tab stands in line with the a
     library:CreateTab("Shopping", shopping, "Shopping")
 
     eq(#ah.Tabs, 3, "the game's list stays as it is")
-    eq(rawget(_G, "TradingBookAuctionHouseTab"), nil, "no tab of its own")
-    local ours, theirs = library:GetButton("TradingBook"), library:GetButton("Shopping")
-    eq(ours:GetText(), "Trading Book")
+    eq(rawget(_G, "TradingEssentialsAuctionHouseTab"), nil, "no tab of its own")
+    local ours, theirs = library:GetButton("TradingEssentials"), library:GetButton("Shopping")
+    eq(ours:GetText(), "Trading Essentials")
     local lastGameTab, oursRect, theirsRect = Mock.Rect(ah.Tabs[3]), Mock.Rect(ours), Mock.Rect(theirs)
     eq(oursRect ~= nil and theirsRect ~= nil, true, "both have a place")
     eq(oursRect.left >= lastGameTab.right, true, "after the game's")
@@ -3357,11 +3357,11 @@ test("with Auctionator, the auction house tab lists what its prices show", funct
     local tables = captureTables(ns)
     ns.RememberItem(1001, "Herb", 1, 1)
     setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100) })
-    SlashCmdList.TRADINGBOOK("watch Herb 1g")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb 1g")
     Mock.LoadAuctionHouseUI()
     openAuctionHouse()
     eq(world.replicateRequests, 0, "opening never scans")
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
 
     local undercut, watched = tables[1], tables[2]
     eq(undercut.rows[1].lowest, 90)
@@ -3384,7 +3384,7 @@ test("a scan the server never answers gives its wait back and says so, so the bu
     local ns, world = Mock.Boot()
     local ah = Mock.LoadAuctionHouseUI()
     openAuctionHouse()
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     local panel = auctionHousePanel(ah)
     eq(world.replicateRequests, 0, "nothing until the button is pressed")
     click(select(3, auctionHouseStatus(panel)))
@@ -3415,12 +3415,12 @@ test("the auction house tab shows the scan, the undercut auctions and the watche
     ns.RememberItem(1001, "Herb", 1, 1)
     ns.RememberItem(1002, "Ore", 1, 1)
     setAuctions(ns, nil, { liveAuction(world, 1, 1001, 100), liveAuction(world, 2, 1002, 40) })
-    SlashCmdList.TRADINGBOOK("watch Ore 1g")
-    SlashCmdList.TRADINGBOOK("watch Herb above 5g")
+    SlashCmdList.TRADINGESSENTIALS("watch Ore 1g")
+    SlashCmdList.TRADINGESSENTIALS("watch Herb above 5g")
     local ah = Mock.LoadAuctionHouseUI()
     scanAuctionHouse()
     answerScan({ auction(1001, 1, 90), auction(1002, 1, 40) })
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     local panel = auctionHousePanel(ah)
 
     local lastScan, state, button = auctionHouseStatus(panel)
@@ -3454,7 +3454,7 @@ test("the auction house tab shows the scan, the undercut auctions and the watche
     eq(state, "Scanning the auction house...")
     eq(button.enabled, false)
 
-    SlashCmdList.TRADINGBOOK("unwatch Ore")
+    SlashCmdList.TRADINGESSENTIALS("unwatch Ore")
     eq(#watched.rows, 1, "the list follows the watch commands")
 end)
 
@@ -3470,12 +3470,12 @@ test("the auction house tab's item tooltips do not get the lines twice", functio
     local ah = Mock.LoadAuctionHouseUI()
     scanAuctionHouse()
     answerScan({ auction(1001, 1, 90) })
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     local row = tables[1].ScrollBox.rendered[1]
     GameTooltip.lines = {}
     row.scripts.OnEnter(row)
     local text = table.concat(GameTooltip.lines, "\n")
-    eq(has(text, "Stock="), false, "the panel is one of Trading Book's own: " .. text)
+    eq(has(text, "Stock="), false, "the panel is one of Trading Essentials's own: " .. text)
     eq(has(text, "Lowest on the AH=90c"), true, text)
 end)
 
@@ -3484,7 +3484,7 @@ layoutTest("layout: the auction house tab fits its texts", function()
     local tables = captureTables(ns)
     local ah = Mock.LoadAuctionHouseUI()
     openAuctionHouse()
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     local panel = auctionHousePanel(ah)
     local bounds = Mock.Rect(panel)
     for _, object in ipairs(Mock.Objects()) do
@@ -3511,14 +3511,14 @@ end)
 
 -- Quick sell --------------------------------------------------------------------------
 
--- Opens the Trading Book tab with the bags as they are, and returns the list of what
+-- Opens the Trading Essentials tab with the bags as they are, and returns the list of what
 -- can be sold, the game's window and the two boxes for the quantity and the price.
 local function openQuickSell(ns)
     local tables = captureTables(ns)
     local ah = Mock.LoadAuctionHouseUI()
     Mock.Fire("AUCTION_HOUSE_SHOW")
     Mock.RunTimers()
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     local boxes = Mock.FindFrames("InputBoxTemplate")
     return tables[3], ah, boxes[1], boxes[2]
 end
@@ -3596,7 +3596,7 @@ local function press(name)
     button.scripts.OnClick(button)
 end
 
-local POST, NEXT, PREVIOUS = "TradingBookQuickSellPost", "TradingBookQuickSellNext", "TradingBookQuickSellPrevious"
+local POST, NEXT, PREVIOUS = "TradingEssentialsQuickSellPost", "TradingEssentialsQuickSellNext", "TradingEssentialsQuickSellPrevious"
 
 local function herbAndOre(world)
     Mock.SetBagItem(0, 1, 1001, "Herb", 20, { commodity = true })
@@ -3669,7 +3669,7 @@ test("posting lists the item as proposed and moves on to the next one", function
     eq(rawget(_G, POST).enabled, false, "waiting for the next price")
 
     Mock.Fire("AUCTION_HOUSE_AUCTION_CREATED", 77)
-    local entry = TradingBookDB.ledger[1]
+    local entry = TradingEssentialsDB.ledger[1]
     eq(entry.kind, "post", "recorded like any listing")
     eq(entry.unit, 90000)
     eq(price:GetText(), "", "Ore has no known price yet")
@@ -3962,9 +3962,9 @@ test("the keys work while the view shows, unless turned off, and wait for combat
     Mock.Fire("PLAYER_REGEN_ENABLED")
     eq(next(world.bindings), nil, "released once it is over: Space must jump again")
 
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     eq(world.bindings.SPACE ~= nil, true)
-    Mock.SettingsControl("Trading Book tab keys").setting:SetValue(false)
+    Mock.SettingsControl("Trading Essentials tab keys").setting:SetValue(false)
     eq(next(world.bindings), nil, "turned off")
 end)
 
@@ -4038,7 +4038,7 @@ end)
 -- Shopping list -------------------------------------------------------------------------
 
 local FINISHING = 2
-local BUY = "TradingBookShoppingBuy"
+local BUY = "TradingEssentialsShoppingBuy"
 
 -- Tracks a recipe. slots: { item or list of qualities, quantity, reagent type? }.
 local function trackRecipe(world, recipeID, name, outputItemID, slots, options)
@@ -4077,7 +4077,7 @@ local function openShopping(ns)
     local ah = Mock.LoadAuctionHouseUI()
     Mock.Fire("AUCTION_HOUSE_SHOW")
     Mock.RunTimers()
-    click(TradingBookAuctionHouseTab)
+    click(TradingEssentialsAuctionHouseTab)
     for _, object in ipairs(Mock.Objects()) do
         local parent = rawget(object, "parent")
         if object.kind == "text" and object.text == ns.L["Purchases"] and parent and rawget(parent, "Underline") then
@@ -4149,7 +4149,7 @@ test("what is already held comes off the list, for this character or the whole a
     Mock.Fire("BANKFRAME_OPENED")
     Mock.RunTimers()
     Mock.Fire("BANKFRAME_CLOSED")
-    TradingBookDB.characters["Alt-Hyjal"] = {
+    TradingEssentialsDB.characters["Alt-Hyjal"] = {
         money = 0, stock = { bags = { [1001] = 5 }, bank = {}, mail = {} },
         auctions = { { auctionID = 1, itemID = 1001, qty = 4, expiresAt = world.now + 3600 } },
     }
@@ -4168,7 +4168,7 @@ test("the number of crafts multiplies the list, and zero takes a recipe off it",
     clickText("+")
     refreshShopping()
     eq(listText(list), "Herb=4/0/4")
-    eq(TradingBookDB.ui.shoppingCrafts["11"], 2, "kept for next time")
+    eq(TradingEssentialsDB.ui.shoppingCrafts["11"], 2, "kept for next time")
 
     local crafts = shoppingBoxes()
     eq(crafts:GetText(), "2")
@@ -4421,7 +4421,7 @@ test("a price well above a component's usual price takes a second press", functi
     for _ = 1, 3 do
         answerScan({ auction(1001, 1, 100) })
         world.now = world.now + 86400
-        SlashCmdList.TRADINGBOOK("scan")
+        SlashCmdList.TRADINGESSENTIALS("scan")
     end
     eq(ns.Market.GetUsualPrice(1001), 100, "three days at 100")
     eq(ns.Market.GetUsualPrice(1002), nil, "never seen")
@@ -4531,9 +4531,9 @@ test("the list follows what is tracked and loads the items it does not know yet"
     refreshShopping()
     eq(#recipes.rows, 2, "a recraft counts")
     eq(listText(list), "Herb=1/0/1,Ore=1/0/1")
-    eq(TradingBookDB.ui.shoppingCrafts, nil, "nothing saved at one craft")
+    eq(TradingEssentialsDB.ui.shoppingCrafts, nil, "nothing saved at one craft")
     ns.Shopping.SetCrafts("12:recraft", 3)
-    eq(TradingBookDB.ui.shoppingCrafts["12:recraft"], 3, "kept apart from the plain recipe")
+    eq(TradingEssentialsDB.ui.shoppingCrafts["12:recraft"], 3, "kept apart from the plain recipe")
 end)
 
 test("what is bought waits in the mail until the mailbox says what it holds", function()
@@ -4554,7 +4554,7 @@ test("the keys buy while the Purchases view shows", function()
     trackRecipe(world, 11, "Make flask", 5001, { { 1001, 1 } })
     openShopping(ns)
     eq(world.bindings.SPACE, "CLICK " .. BUY .. ":LeftButton")
-    eq(world.bindings["SHIFT-SPACE"], "CLICK TradingBookShoppingNext:LeftButton")
+    eq(world.bindings["SHIFT-SPACE"], "CLICK TradingEssentialsShoppingNext:LeftButton")
     for _, object in ipairs(Mock.Objects()) do
         local parent = rawget(object, "parent")
         if object.kind == "text" and object.text == "Quick sell" and parent and rawget(parent, "Underline") then
@@ -4746,7 +4746,7 @@ end
 
 local SETTING_NAMES = {
     "Minimap icon", "Item tooltips", "Mail summary", "Sale duration", "Proposed price",
-    "Next item after posting", "Trading Book tab keys", "Stock counted for purchases",
+    "Next item after posting", "Trading Essentials tab keys", "Stock counted for purchases",
     "Component quality", "Custom window scale", "Window scale",
 }
 
@@ -4754,7 +4754,7 @@ test("the add-on has a page of its own in the game's options, with every setting
     Mock.Boot()
     local page = Mock.SettingsPage()
     eq(page ~= nil, true, "registered among the add-ons")
-    eq(page.name, "Trading Book")
+    eq(page.name, "Trading Essentials")
     eq(page.frame.OnRefresh ~= nil and page.frame.OnDefault ~= nil, true, "the panel can refresh and reset it")
     local kinds, previousTop = {}, math.huge
     for _, name in ipairs(SETTING_NAMES) do
@@ -4791,19 +4791,19 @@ end)
 test("right-clicking the icon or the add-on menu entry opens the settings", function()
     local _, world = Mock.Boot()
     local id = Mock.SettingsPage():GetID()
-    local button = TradingBookMinimapButton
+    local button = TradingEssentialsMinimapButton
     button.scripts.OnClick(button, "RightButton")
     eq(world.openedSettings, id, "from the icon")
-    eq(TradingBookMainFrame, nil, "without opening the window")
+    eq(TradingEssentialsMainFrame, nil, "without opening the window")
 
     world.openedSettings = nil
-    TradingBook_OnAddonCompartmentClick("TradingBook", "RightButton")
+    TradingEssentials_OnAddonCompartmentClick("TradingEssentials", "RightButton")
     eq(world.openedSettings, id, "from the add-on menu")
-    TradingBook_OnAddonCompartmentClick("TradingBook", "LeftButton")
-    eq(TradingBookMainFrame:IsShown(), true, "a left click still opens the window")
+    TradingEssentials_OnAddonCompartmentClick("TradingEssentials", "LeftButton")
+    eq(TradingEssentialsMainFrame:IsShown(), true, "a left click still opens the window")
 
     world.openedSettings = nil
-    SlashCmdList.TRADINGBOOK("settings")
+    SlashCmdList.TRADINGESSENTIALS("settings")
     eq(world.openedSettings, id, "from the slash command")
 end)
 
@@ -4816,29 +4816,29 @@ test("the minimap and tooltip settings agree with the slash commands", function(
     eq(tooltip:GetValue(), true)
 
     minimap:SetValue(false)
-    eq(TradingBookMinimapButton:IsShown(), false, "the icon hides")
+    eq(TradingEssentialsMinimapButton:IsShown(), false, "the icon hides")
     tooltip:SetValue(false)
     eq(hoverItem(1001), "", "the tooltip lines go")
     eq(#world.printed, 0, "quietly, the panel shows it")
 
-    SlashCmdList.TRADINGBOOK("minimap")
-    SlashCmdList.TRADINGBOOK("tooltip")
+    SlashCmdList.TRADINGESSENTIALS("minimap")
+    SlashCmdList.TRADINGESSENTIALS("tooltip")
     eq(minimap:GetValue(), true, "the slash command shows in the settings")
     eq(tooltip:GetValue(), true)
-    eq(TradingBookMinimapButton:IsShown(), true)
+    eq(TradingEssentialsMinimapButton:IsShown(), true)
     eq(has(hoverItem(1001), "Last sale"), true)
 
     minimap:SetValue(false)
-    Mock.Boot({ db = TradingBookDB })
+    Mock.Boot({ db = TradingEssentialsDB })
     eq(Mock.SettingsControl("Minimap icon").setting:GetValue(), false, "kept across a reload")
-    eq(TradingBookMinimapButton:IsShown(), false)
+    eq(TradingEssentialsMinimapButton:IsShown(), false)
 end)
 
 test("the window follows the game's UI scale until it has a scale of its own", function()
     Mock.Boot()
     UIParent:SetScale(0.8)
-    SlashCmdList.TRADINGBOOK("")
-    local frame = TradingBookMainFrame
+    SlashCmdList.TRADINGESSENTIALS("")
+    local frame = TradingEssentialsMainFrame
     local custom, slider = scaleControls()
     near(frame:GetEffectiveScale(), 0.8, 0.0001, "the game's scale")
     eq(custom.setting:GetValue(), false)
@@ -4859,7 +4859,7 @@ test("the window follows the game's UI scale until it has a scale of its own", f
 
     custom.setting:SetValue(false)
     near(frame:GetEffectiveScale(), 0.6, 0.0001, "the game's scale again")
-    eq(TradingBookDB.ui.scale, nil)
+    eq(TradingEssentialsDB.ui.scale, nil)
 end)
 
 test("a scale of its own starts from the game's, on the slider's steps and range", function()
@@ -4869,7 +4869,7 @@ test("a scale of its own starts from the game's, on the slider's steps and range
         UIParent:SetScale(case[1])
         custom.setting:SetValue(true)
         eq(slider.setting:GetValue(), case[2], "from " .. case[1])
-        near(TradingBookDB.ui.scale, case[2] / 100, 0.0001, "saved from " .. case[1])
+        near(TradingEssentialsDB.ui.scale, case[2] / 100, 0.0001, "saved from " .. case[1])
         custom.setting:SetValue(false)
     end
 end)
@@ -4881,21 +4881,21 @@ test("the scale is set before the window first shows, and kept across a reload",
     custom.setting:SetValue(true)
     slider.setting:SetValue(90)
     Mock.Fire("UI_SCALE_CHANGED") -- No window yet.
-    SlashCmdList.TRADINGBOOK("")
-    near(TradingBookMainFrame:GetEffectiveScale(), 0.9, 0.0001, "on creation")
+    SlashCmdList.TRADINGESSENTIALS("")
+    near(TradingEssentialsMainFrame:GetEffectiveScale(), 0.9, 0.0001, "on creation")
 
-    Mock.Boot({ db = TradingBookDB })
+    Mock.Boot({ db = TradingEssentialsDB })
     UIParent:SetScale(0.7)
-    SlashCmdList.TRADINGBOOK("")
-    near(TradingBookMainFrame:GetEffectiveScale(), 0.9, 0.0001, "after a reload")
+    SlashCmdList.TRADINGESSENTIALS("")
+    near(TradingEssentialsMainFrame:GetEffectiveScale(), 0.9, 0.0001, "after a reload")
     eq(Mock.SettingsControl("Window scale").setting:GetValue(), 90)
 end)
 
 test("changing the scale keeps the window's centre on the same spot of the screen", function()
     Mock.Boot()
     UIParent:SetScale(0.8)
-    SlashCmdList.TRADINGBOOK("")
-    local frame = TradingBookMainFrame
+    SlashCmdList.TRADINGESSENTIALS("")
+    local frame = TradingEssentialsMainFrame
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 300, 1100)
     frame.scripts.OnDragStop(frame)
@@ -4908,10 +4908,10 @@ test("changing the scale keeps the window's centre on the same spot of the scree
     near(newX, x, 0.01, "x")
     near(newY, y, 0.01, "y")
 
-    Mock.Boot({ db = TradingBookDB })
+    Mock.Boot({ db = TradingEssentialsDB })
     UIParent:SetScale(0.8)
-    SlashCmdList.TRADINGBOOK("")
-    newX, newY = screenCenter(TradingBookMainFrame)
+    SlashCmdList.TRADINGESSENTIALS("")
+    newX, newY = screenCenter(TradingEssentialsMainFrame)
     near(newX, x, 0.01, "x after a reload")
     near(newY, y, 0.01, "y after a reload")
 end)
@@ -4936,15 +4936,15 @@ test("restoring the defaults gives back the game's scale, the icon and the toolt
         else
             page:OnDefault()
         end
-        eq(TradingBookDB.ui.scale, nil, "follows the game again, from the " .. how)
+        eq(TradingEssentialsDB.ui.scale, nil, "follows the game again, from the " .. how)
         eq(slider.setting:GetValue(), 70, "the slider shows the game's scale, from the " .. how)
         eq(Mock.IsControlEnabled(slider), false, "greyed out again, from the " .. how)
         eq(custom.setting:GetValue(), false)
-        eq(TradingBookMinimapButton:IsShown(), true, "icon, from the " .. how)
+        eq(TradingEssentialsMinimapButton:IsShown(), true, "icon, from the " .. how)
         eq(Mock.SettingsControl("Minimap icon").setting:GetValue(), true, "the page shows it")
-        eq(TradingBookDB.ui.hideItemTooltip, nil, "tooltip lines, from the " .. how)
+        eq(TradingEssentialsDB.ui.hideItemTooltip, nil, "tooltip lines, from the " .. how)
         eq(Mock.SettingsControl("Sale duration").setting:GetValue(), 48)
-        eq(TradingBookDB.ui.order, nil, "the order, from the " .. how)
+        eq(TradingEssentialsDB.ui.order, nil, "the order, from the " .. how)
     end
 end)
 
@@ -4967,14 +4967,14 @@ end)
 
 test("the slash command opens tabs and explains itself otherwise", function()
     local ns, world = Mock.Boot()
-    SlashCmdList.TRADINGBOOK("")
-    eq(TradingBookMainFrame:IsShown(), true)
-    SlashCmdList.TRADINGBOOK("stats")
-    SlashCmdList.TRADINGBOOK("STOCK")
+    SlashCmdList.TRADINGESSENTIALS("")
+    eq(TradingEssentialsMainFrame:IsShown(), true)
+    SlashCmdList.TRADINGESSENTIALS("stats")
+    SlashCmdList.TRADINGESSENTIALS("STOCK")
     eq(#world.printed, 0)
-    SlashCmdList.TRADINGBOOK("nonsense")
+    SlashCmdList.TRADINGESSENTIALS("nonsense")
     eq(#world.printed, 1)
-    TradingBook_OnAddonCompartmentClick()
+    TradingEssentials_OnAddonCompartmentClick()
 end)
 
 test("English needs no translation, and an unknown string falls back to it", function()
@@ -4990,7 +4990,7 @@ end)
 -- The strings the interface asks for, read from the sources listed in the TOC.
 local function interfaceStrings()
     local keys = {}
-    for line in io.lines("TradingBook.toc") do
+    for line in io.lines("TradingEssentials.toc") do
         line = line:gsub("%s+$", "")
         if line ~= "" and line:sub(1, 2) ~= "##" and not line:find("^Locales") then
             for sourceLine in io.lines((line:gsub("\\", "/"))) do
@@ -5035,7 +5035,7 @@ end
 
 test("the icon is a texture the client can read, used by the add-on list too", function()
     local ns = Mock.Boot()
-    local path = ns.ICON:match("^Interface\\AddOns\\TradingBook\\(.+)$")
+    local path = ns.ICON:match("^Interface\\AddOns\\TradingEssentials\\(.+)$")
     eq(path ~= nil, true, "inside the addon folder: " .. ns.ICON)
     local file = assert(io.open(path:gsub("\\", "/") .. ".tga", "rb"), "Media/Icon.tga is missing")
     local header = file:read(18)
@@ -5052,7 +5052,7 @@ test("the icon is a texture the client can read, used by the add-on list too", f
     eq(header:byte(17), 32, "32 bits, with alpha")
     eq(isPowerOfTwo(width) and isPowerOfTwo(height), true, "sides a power of two")
     local iconTexture
-    for line in io.lines("TradingBook.toc") do
+    for line in io.lines("TradingEssentials.toc") do
         iconTexture = iconTexture or line:match("^## IconTexture: (%S+)")
     end
     eq(iconTexture, ns.ICON)
@@ -5060,7 +5060,7 @@ end)
 
 test("the add-on list has a description and a category in every language", function()
     local lines = {}
-    for line in io.lines("TradingBook.toc") do
+    for line in io.lines("TradingEssentials.toc") do
         lines[line:match("^## ([^:]+):") or ""] = true
     end
     for _, locale in ipairs(LOCALES) do

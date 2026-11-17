@@ -2,13 +2,13 @@ local addonName, ns = ...
 local L = ns.L
 local UI = ns.UI
 
--- Trading Book's page in the game's options, under AddOns. Its controls read and write
+-- Trading Essentials's page in the game's options, under AddOns. Its controls read and write
 -- the same saved values as the slash commands, so that both always agree.
 --
--- The page is one frame of Trading Book's own (a canvas), with its own controls. The
+-- The page is one frame of Trading Essentials's own (a canvas), with its own controls. The
 -- game's settings objects and their list rows must not be used: the options panel
 -- reads every registered setting when an action button is clicked, and reuses its
--- rows for the game's own options, so Trading Book's values would taint them and get
+-- rows for the game's own options, so Trading Essentials's values would taint them and get
 -- actions blocked, such as using an item or searching the key bindings.
 
 -- The window's scale, in percent like the game's UI scale. The largest still fits the
@@ -101,7 +101,7 @@ local function DefineControls()
     }
     return {
         { kind = "checkbox", name = L["Minimap icon"], default = true,
-            tooltip = L["Shows Trading Book's icon on the edge of the minimap."],
+            tooltip = L["Shows Trading Essentials's icon on the edge of the minimap."],
             get = UI.IsMinimapButtonShown, set = UI.SetMinimapButtonShown },
         { kind = "checkbox", name = L["Item tooltips"], default = true,
             tooltip = L["Adds what the account holds of an item and what it sold for to the item's tooltip."],
@@ -110,7 +110,7 @@ local function DefineControls()
             tooltip = L["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."],
             get = ns.Mail.IsSummaryEnabled, set = ns.Mail.SetSummaryEnabled },
         { kind = "dropdown", name = L["Sale duration"], default = ns.Selling.DEFAULT_HOURS, choices = hourChoices,
-            tooltip = L["How long auctions last when quick selling from the Trading Book tab of the auction house."],
+            tooltip = L["How long auctions last when quick selling from the Trading Essentials tab of the auction house."],
             get = ns.Selling.GetDefaultHours, set = ns.Selling.SetDefaultHours },
         { kind = "dropdown", name = L["Proposed price"], default = ns.Selling.PRICINGS[1].key,
             choices = KeyedChoices(ns.Selling.PRICINGS),
@@ -119,8 +119,8 @@ local function DefineControls()
         { kind = "checkbox", name = L["Next item after posting"], default = true,
             tooltip = L["Moves on to the next item of the list once an item is posted."],
             get = ns.Selling.IsAutoNextEnabled, set = ns.Selling.SetAutoNextEnabled },
-        { kind = "checkbox", name = L["Trading Book tab keys"], default = true,
-            tooltip = L["In the Trading Book tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."],
+        { kind = "checkbox", name = L["Trading Essentials tab keys"], default = true,
+            tooltip = L["In the Trading Essentials tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."],
             get = ns.Selling.AreShortcutsEnabled, set = ns.Selling.SetShortcutsEnabled },
         { kind = "dropdown", name = L["Stock counted for purchases"], default = ns.Shopping.STOCK_SCOPES[1].key,
             choices = KeyedChoices(ns.Shopping.STOCK_SCOPES),
@@ -446,7 +446,7 @@ local function CreatePage()
 
     local title = page:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
     title:SetPoint("TOPLEFT", page, "TOPLEFT", TITLE_LEFT, TITLE_TOP)
-    title:SetText("Trading Book")
+    title:SetText("Trading Essentials")
 
     local defaults = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     defaults:SetSize(DEFAULTS_WIDTH, DEFAULTS_HEIGHT)
@@ -502,7 +502,7 @@ end
 ns.OnEvent("ADDON_LOADED", function(name)
     if name == addonName then
         CreatePage()
-        category = Settings.RegisterCanvasLayoutCategory(page, "Trading Book")
+        category = Settings.RegisterCanvasLayoutCategory(page, "Trading Essentials")
         Settings.RegisterAddOnCategory(category)
     end
 end)

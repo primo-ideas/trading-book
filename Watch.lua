@@ -124,7 +124,7 @@ local function List()
         table.insert(itemIDs, itemID)
     end
     if #itemIDs == 0 then
-        ns.Print(L["No item is watched. /tradingbook watch followed by an item and a price adds one."])
+        ns.Print(L["No item is watched. /tradingessentials watch followed by an item and a price adds one."])
         return
     end
     table.sort(itemIDs, function(a, b)
@@ -143,7 +143,7 @@ local function List()
     end
 end
 
--- /tradingbook watch [item [below|above] price]
+-- /tradingessentials watch [item [below|above] price]
 function Watch.Command(text)
     text = text:match("^%s*(.-)%s*$")
     if text == "" then
@@ -179,7 +179,7 @@ function Watch.Command(text)
     ns.Print(L["Watching %s: %s."]:format(DisplayName(itemID), table.concat(TargetParts(ns.db.watch[itemID]), ", ")))
 end
 
--- /tradingbook unwatch item
+-- /tradingessentials unwatch item
 function Watch.UnwatchCommand(text)
     local itemID, _, rest = ReadItem(text:match("^%s*(.-)%s*$"))
     itemID = itemID or ns.LookupItemID(rest)

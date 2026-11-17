@@ -1,4 +1,4 @@
-# Trading Book documentation
+# Trading Essentials documentation
 
 | Page | What it covers |
 | --- | --- |

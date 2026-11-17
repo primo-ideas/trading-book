@@ -15,11 +15,11 @@ The catchline shown under the name in search results and lists:
 ## Description
 
 ```markdown
-# Trading Book
+# Trading Essentials
 
 **Know what your auctions really earn.**
 
-Trading Book keeps the books of your auction house business for the whole account: every sale, purchase, listing, expiry and cancellation, your stock wherever it sits, and your gold. It turns them into clear numbers (profit per item, sell-through, time to sell) and adds a tab to the auction house to sell and restock in a few clicks.
+Trading Essentials keeps the books of your auction house business for the whole account: every sale, purchase, listing, expiry and cancellation, your stock wherever it sits, and your gold. It turns them into clear numbers (profit per item, sell-through, time to sell) and adds a tab to the auction house to sell and restock in a few clicks.
 
 ## What it does
 
@@ -38,7 +38,7 @@ Trading Book keeps the books of your auction house business for the whole accoun
 - Bags, bank, Warband bank, mail and auction house, for every character, with the change over 7 days and an estimated value.
 - Gold curve, best and worst day, peak, and the share that comes from the auction house.
 
-### A Trading Book tab in the auction house
+### A Trading Essentials tab in the auction house
 - **Quick sell**: pick an item from your bags, it is priced at the lowest on sale, post it, and the next one is ready. Keyboard shortcuts included.
 - **Purchases**: your tracked recipes become a shopping list. It buys only what is missing after your stock, shows what each craft earns, and asks twice before an unusually high price.
 - **Tracking**: your undercut auctions and your watched items, with price targets.
@@ -47,13 +47,13 @@ Trading Book keeps the books of your auction house business for the whole accoun
 Your stock of the item by character, your average sale price, your last sale, the profit per unit, the sell-through and the auction house price, at the bottom of the tooltip, without clutter.
 
 ## Works with Auctionator
-Trading Book uses Auctionator's prices when it is installed, and scans the auction house itself when it is not. Scanning only happens when you ask for it.
+Trading Essentials uses Auctionator's prices when it is installed, and scans the auction house itself when it is not. Scanning only happens when you ask for it.
 
 ## Commands
-- `/tradingbook` opens the window (also from the minimap icon and the addon menu).
-- `/tradingbook auctions`, `stock`, `stats`, `gold` open a tab directly.
-- `/tradingbook scan` scans the auction house.
-- `/tradingbook settings` opens the settings.
+- `/tradingessentials` opens the window (also from the minimap icon and the addon menu).
+- `/tradingessentials auctions`, `stock`, `stats`, `gold` open a tab directly.
+- `/tradingessentials scan` scans the auction house.
+- `/tradingessentials settings` opens the settings.
 
 ## Languages
 English, French, German, Spanish, Italian, Brazilian Portuguese, Russian, Korean, and Simplified and Traditional Chinese. Translations are new: corrections are welcome.

@@ -17,7 +17,7 @@ On Windows, with the Python install manager, `py install 3.12` adds that version
 
 ## Publishing on CurseForge
 
-`.pkgmeta` describes the package: a `TradingBook` folder holding the `.toc`, the files it lists and `Media/`, the same as `install.ps1`.
+`.pkgmeta` describes the package: a `TradingEssentials` folder holding the `.toc`, the files it lists and `Media/`, the same as `install.ps1`.
 
 The summary and description of the project page are in [curseforge.md](curseforge.md), to paste into the project settings whenever they change.
 
@@ -40,7 +40,7 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 
 | File | Role |
 | --- | --- |
-| `Core.lua` | Events, saved data, formatting, `/tradingbook` command |
+| `Core.lua` | Events, saved data, formatting, `/tradingessentials` command |
 | `Ledger.lua` | History of operations |
 | `Auctions.lua` | Listings, cancellations, active auctions |
 | `Mail.lua` | Sales, purchases and expiries read from the mail |
@@ -54,13 +54,15 @@ The tag name becomes the addon's version. A tag containing `alpha` or `beta` pub
 | `Locales.lua`, `Locales/` | Language selection and translations (English is the key and the fallback) |
 | `UI/` | Window, tables, tabs, settings page and its order section, item tooltips, the auction house tab and its quick sell and shopping views |
 | `Media/` | Textures: `Icon.tga`, the addon's icon (minimap, window portrait, addon list) |
-| `art/` | Source images, left out of the package: `icon.png`, the icon at 512 x 512, also the CurseForge project icon |
+| `art/` | Source images, left out of the package: `icon.svg`, the icon's drawing (CC0), and `icon.png`, the icon at 512 x 512, also the CurseForge project icon |
 | `tests/` | Fake client and tests |
 | `docs/` | This documentation |
 | `.github/workflows/` | Continuous integration |
 | `install.ps1`, `.pkgmeta` | Local install and CurseForge package |
 
 ## The icon
+
+The icon is a pile of gold coins, "Pile of Golden Coins Vector" from OpenClipart, in the public domain (CC0): <https://freesvg.org/pile-of-golden-coins-vector>. Its source is `art/icon.svg`. `art/icon.png` is that drawing at 512 x 512 on a transparent background, the coins 496 pixels wide and centered, rendered with a headless browser (for instance Chrome's `--headless --screenshot --default-background-color=00000000 --window-size=512,512` on a page holding only the image).
 
 The client reads TGA (and BLP) textures, with sides a power of two. After changing `art/icon.png`, rebuild `Media/Icon.tga` from it, an uncompressed 32-bit TGA of 64 x 64, with Pillow (`pip install pillow`):
 
@@ -72,7 +74,7 @@ Then restart WoW: a texture file new to the addon folder is only found at launch
 
 ## Settings and taint
 
-The settings page is a canvas: one frame of Trading Book's own, registered with `Settings.RegisterCanvasLayoutCategory`, with its own checkboxes, dropdowns and slider. It must not go back to the game's settings objects (`Settings.RegisterProxySetting`, `Settings.CreateCheckbox` and the like, or an element initializer):
+The settings page is a canvas: one frame of Trading Essentials' own, registered with `Settings.RegisterCanvasLayoutCategory`, with its own checkboxes, dropdowns and slider. It must not go back to the game's settings objects (`Settings.RegisterProxySetting`, `Settings.CreateCheckbox` and the like, or an element initializer):
 
 - The options panel looks a setting up by going through every registered setting, and the action bars do so on every click. An addon's setting carries the addon's taint, so a click on an action button could be blocked (`UseAction`).
 - The panel reuses the frames of its list for every category. A row once filled for an addon's setting keeps its taint, and the game's own options shown in it later get blocked, for instance when searching the key bindings (`IsUserOAuthed`).

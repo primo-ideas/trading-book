@@ -23,7 +23,7 @@ local tabOrder = UI.RegisterOrder("tabs", L["Window tabs"])
 local frame = nil
 local selectedKey = nil
 local selectedCharacter = nil
--- Frames whose item tooltips already show what Trading Book knows of the item.
+-- Frames whose item tooltips already show what Trading Essentials knows of the item.
 local ownFrames = {}
 
 -- tab: { key, title, Build = fn(pane, toolbar), Refresh = fn() }
@@ -65,7 +65,7 @@ function UI.AddOwnFrame(ownFrame)
     ownFrames[ownFrame] = true
 end
 
--- Whether a frame is part of Trading Book's own windows, such as one of its table rows.
+-- Whether a frame is part of Trading Essentials's own windows, such as one of its table rows.
 function UI.IsOwnFrame(object)
     while object do
         if ownFrames[object] then
@@ -215,13 +215,13 @@ local function CreateCharacterDropdown()
 end
 
 local function CreateMainFrame()
-    frame = CreateFrame("Frame", "TradingBookMainFrame", UIParent, "ButtonFrameTemplate")
+    frame = CreateFrame("Frame", "TradingEssentialsMainFrame", UIParent, "ButtonFrameTemplate")
     UI.AddOwnFrame(frame)
     frame:SetSize(WIDTH, HEIGHT)
     frame:SetScale(FrameScale())
     frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
-    frame:SetTitle("Trading Book")
+    frame:SetTitle("Trading Essentials")
     frame:SetPortraitToAsset(ns.ICON)
     ButtonFrameTemplate_HideButtonBar(frame)
 
@@ -235,11 +235,11 @@ local function CreateMainFrame()
         SavePosition()
     end)
     RestorePosition()
-    table.insert(UISpecialFrames, "TradingBookMainFrame")
+    table.insert(UISpecialFrames, "TradingEssentialsMainFrame")
     CreateCharacterDropdown()
 
     for index, tab in ipairs(tabs) do
-        local button = CreateFrame("Button", "TradingBookMainFrameTab" .. index, frame, "PanelTabButtonTemplate")
+        local button = CreateFrame("Button", "TradingEssentialsMainFrameTab" .. index, frame, "PanelTabButtonTemplate")
         button:SetText(tab.title)
         button:SetScript("OnClick", function()
             SelectTab(tab.key)

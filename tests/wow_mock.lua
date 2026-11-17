@@ -10,9 +10,9 @@ local Mock = {}
 local realG = _G
 local allowedGlobals = {
     -- Written by the addon.
-    TradingBook = true, TradingBookDB = true, SLASH_TRADINGBOOK1 = true,
-    TradingBook_OnAddonCompartmentClick = true, TradingBookMainFrame = true,
-    TradingBookMinimapButton = true, TradingBookExportFrame = true, TradingBookAuctionHouseTab = true,
+    TradingEssentials = true, TradingEssentialsDB = true, SLASH_TRADINGESSENTIALS1 = true,
+    TradingEssentials_OnAddonCompartmentClick = true, TradingEssentialsMainFrame = true,
+    TradingEssentialsMinimapButton = true, TradingEssentialsExportFrame = true, TradingEssentialsAuctionHouseTab = true,
     -- Optional dependency, nil when not installed.
     Auctionator = true,
     -- Comes with the addons that embed it, Auctionator among them.
@@ -870,11 +870,11 @@ end
 
 -- Test API ------------------------------------------------------------------
 
-local ADDON_NAME = "TradingBook"
+local ADDON_NAME = "TradingEssentials"
 
 local function TocFiles()
     local files = {}
-    for line in io.lines("TradingBook.toc") do
+    for line in io.lines("TradingEssentials.toc") do
         line = line:gsub("%s+$", "")
         if line ~= "" and line:sub(1, 2) ~= "##" then
             table.insert(files, (line:gsub("\\", "/")))
@@ -1172,12 +1172,12 @@ function Mock.Boot(options)
     objects = {}
 
     setmetatable(realG, nil)
-    realG.TradingBookDB = nil
-    realG.TradingBook = nil
-    realG.TradingBookMainFrame = nil
-    realG.TradingBookMinimapButton = nil
-    realG.TradingBookExportFrame = nil
-    realG.TradingBookAuctionHouseTab = nil
+    realG.TradingEssentialsDB = nil
+    realG.TradingEssentials = nil
+    realG.TradingEssentialsMainFrame = nil
+    realG.TradingEssentialsMinimapButton = nil
+    realG.TradingEssentialsExportFrame = nil
+    realG.TradingEssentialsAuctionHouseTab = nil
     realG.AuctionHouseFrame = nil
     realG.LibStub = nil
     realG.Auctionator = options.auctionator
@@ -1218,7 +1218,7 @@ function Mock.Boot(options)
 
     -- As in the client, saved variables only appear just before our own ADDON_LOADED.
     Mock.Fire("ADDON_LOADED", "SomeOtherAddon")
-    rawset(realG, "TradingBookDB", options.db)
+    rawset(realG, "TradingEssentialsDB", options.db)
     Mock.Fire("ADDON_LOADED", ADDON_NAME)
     Mock.Fire("PLAYER_LOGIN")
     Mock.RunTimers()

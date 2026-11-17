@@ -1,5 +1,5 @@
 ## Interface: 120105
-## Title: Trading Book
+## Title: Trading Essentials
 ## Notes: Keeps a record of your auctions and your stock, with statistics.
 ## Notes-deDE: Behält deine Auktionen und deinen Bestand im Blick, mit Statistiken.
 ## Notes-esES: Lleva el registro de tus subastas y tus existencias, con estadísticas.
@@ -13,10 +13,10 @@
 ## Notes-zhTW: 記錄你的拍賣與庫存，並提供統計資料。
 ## Author: Primo
 ## Version: @project-version@
-## SavedVariables: TradingBookDB
+## SavedVariables: TradingEssentialsDB
 ## OptionalDeps: Auctionator
-## IconTexture: Interface\AddOns\TradingBook\Media\Icon
-## AddonCompartmentFunc: TradingBook_OnAddonCompartmentClick
+## IconTexture: Interface\AddOns\TradingEssentials\Media\Icon
+## AddonCompartmentFunc: TradingEssentials_OnAddonCompartmentClick
 ## Category-enUS: Auctions
 ## Category-deDE: Auktionen
 ## Category-esES: Subastas

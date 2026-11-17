@@ -42,16 +42,16 @@ local function ShowTooltip(self)
         return
     end
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:SetText("Trading Book")
+    GameTooltip:SetText("Trading Essentials")
     GameTooltip:AddLine(L["Left-click: open or close"], 1, 1, 1)
     GameTooltip:AddLine(L["Right-click: settings"], 1, 1, 1)
     GameTooltip:AddLine(L["Drag: move"], 1, 1, 1)
-    GameTooltip:AddLine(L["/tradingbook minimap: hide this icon"], 0.7, 0.7, 0.7)
+    GameTooltip:AddLine(L["/tradingessentials minimap: hide this icon"], 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end
 
 local function CreateButton()
-    button = CreateFrame("Button", "TradingBookMinimapButton", Minimap)
+    button = CreateFrame("Button", "TradingEssentialsMinimapButton", Minimap)
     button:SetSize(31, 31)
     button:SetFrameStrata("MEDIUM")
     button:SetFixedFrameStrata(true)
@@ -116,7 +116,7 @@ function UI.ToggleMinimapButton()
     UI.SetMinimapButtonShown(shown)
     UI.RefreshSettings()
     if not shown then
-        ns.Print(L["Minimap icon hidden. Type /tradingbook minimap to bring it back."])
+        ns.Print(L["Minimap icon hidden. Type /tradingessentials minimap to bring it back."])
     end
 end
 

@@ -116,24 +116,24 @@ ns.Translation = {
     ["%d d"] = "%d天",
     ["%d h"] = "%d小时",
     ["%d min"] = "%d分钟",
-    ["Usage: /tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "用法：/tradingbook [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
+    ["Usage: /tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]"] = "用法：/tradingessentials [auctions | stock | stats | gold | scan | watch | unwatch | export | settings | minimap | tooltip]",
 
     -- Minimap icon
     ["Left-click: open or close"] = "左键：打开或关闭",
     ["Right-click: settings"] = "右键：设置",
     ["Drag: move"] = "拖动：移动",
-    ["/tradingbook minimap: hide this icon"] = "/tradingbook minimap：隐藏此图标",
-    ["Minimap icon hidden. Type /tradingbook minimap to bring it back."] = "小地图图标已隐藏。输入 /tradingbook minimap 可重新显示。",
+    ["/tradingessentials minimap: hide this icon"] = "/tradingessentials minimap：隐藏此图标",
+    ["Minimap icon hidden. Type /tradingessentials minimap to bring it back."] = "小地图图标已隐藏。输入 /tradingessentials minimap 可重新显示。",
 
     -- Item tooltips
     ["Avg. sale (90 days)"] = "平均售价（90天）",
     ["Last sale (%s)"] = "最近售出（%s）",
-    ["Item tooltip lines hidden. Type /tradingbook tooltip to bring them back."] = "已隐藏物品鼠标提示中的信息。输入 /tradingbook tooltip 可重新显示。",
+    ["Item tooltip lines hidden. Type /tradingessentials tooltip to bring them back."] = "已隐藏物品鼠标提示中的信息。输入 /tradingessentials tooltip 可重新显示。",
     ["Item tooltip lines shown."] = "已重新在物品鼠标提示中显示信息。",
 
     -- Settings
     ["Minimap icon"] = "小地图图标",
-    ["Shows Trading Book's icon on the edge of the minimap."] = "在小地图边缘显示 Trading Book 图标。",
+    ["Shows Trading Essentials's icon on the edge of the minimap."] = "在小地图边缘显示 Trading Essentials 图标。",
     ["Item tooltips"] = "物品鼠标提示",
     ["Adds what the account holds of an item and what it sold for to the item's tooltip."] = "在物品的鼠标提示中加入账号持有的数量和售出的价格。",
     ["Custom window scale"] = "窗口独立缩放",
@@ -165,7 +165,7 @@ ns.Translation = {
     ["When you leave the mailbox, sums up in the chat the sales, purchases and expiries collected."] = "离开邮箱时，在聊天框中汇总领取的售出、购买和过期。",
 
     -- Watch list and export
-    ["No item is watched. /tradingbook watch followed by an item and a price adds one."] = "没有关注的物品。输入 /tradingbook watch 加物品和价格即可添加。",
+    ["No item is watched. /tradingessentials watch followed by an item and a price adds one."] = "没有关注的物品。输入 /tradingessentials watch 加物品和价格即可添加。",
     ["Watched items:"] = "关注的物品：",
     ["buy at %s or less"] = "%s 或更低时购买",
     ["sell at %s or more"] = "%s 或更高时出售",
@@ -222,7 +222,7 @@ ns.Translation = {
     ["Quick sell"] = "快速出售",
     ["Tracking"] = "跟踪",
     ["Sale duration"] = "出售时长",
-    ["How long auctions last when quick selling from the Trading Book tab of the auction house."] = "在拍卖行的 Trading Book 标签页快速出售时拍卖的持续时间。",
+    ["How long auctions last when quick selling from the Trading Essentials tab of the auction house."] = "在拍卖行的 Trading Essentials 标签页快速出售时拍卖的持续时间。",
     ["Proposed price"] = "建议价格",
     ["The price quick selling proposes, against the lowest one on sale."] = "快速出售根据在售最低价建议的价格。",
     ["Next item after posting"] = "上架后切换到下一个物品",
@@ -256,8 +256,8 @@ ns.Translation = {
     ["What is subtracted from the components to buy."] = "从待购买材料中扣除的库存。",
     ["Component quality"] = "材料品质",
     ["Which quality of a component the shopping list buys."] = "购买清单选择的材料品质。",
-    ["Trading Book tab keys"] = "Trading Book 标签页按键",
-    ["In the Trading Book tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "在拍卖行的 Trading Book 标签页，空格键上架或购买，Shift-空格键切换到下一个物品，退格键切换到上一个。",
+    ["Trading Essentials tab keys"] = "Trading Essentials 标签页按键",
+    ["In the Trading Essentials tab of the auction house, Space posts or buys, Shift-Space goes to the next item and Backspace to the previous one."] = "在拍卖行的 Trading Essentials 标签页，空格键上架或购买，Shift-空格键切换到下一个物品，退格键切换到上一个。",
     ["Cheapest: %s for %s"] = "最便宜：%s 个，%s",
     ["Dearer than usual: %s"] = "比平时贵：%s",
     ["Craft cost per unit"] = "单件制作成本",
